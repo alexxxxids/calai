@@ -5,6 +5,7 @@ import {
   postgresToTime,
   timeToPostgres,
   isValidIanaTimezone,
+  shouldShowTimezoneBanner,
 } from './schemas';
 
 describe('profile schemas & time helpers', () => {
@@ -121,4 +122,24 @@ describe('profile schemas & time helpers', () => {
       ).toBe(true);
     });
   });
+  describe('shouldShowTimezoneBanner', () => {
+    it('returns true when browser timezone differs from profile timezone', () => {
+      expect(shouldShowTimezoneBanner('Europe/London', 'Europe/Warsaw', false)).toBe(true);
+      expect(shouldShowTimezoneBanner('America/New_York', 'Europe/Warsaw', false)).toBe(true);
+    });
+
+    it('returns false when timezones match', () => {
+      expect(shouldShowTimezoneBanner('Europe/Warsaw', 'Europe/Warsaw', false)).toBe(false);
+    });
+
+    it('returns false when browser timezone is null or Factory', () => {
+      expect(shouldShowTimezoneBanner(null, 'Europe/Warsaw', false)).toBe(false);
+      expect(shouldShowTimezoneBanner('Factory', 'Europe/Warsaw', false)).toBe(false);
+    });
+
+    it('returns false when banner is dismissed by user', () => {
+      expect(shouldShowTimezoneBanner('Europe/London', 'Europe/Warsaw', true)).toBe(false);
+    });
+  });
+
 });

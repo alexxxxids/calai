@@ -126,3 +126,17 @@ export const TimezoneUpdateSchema = z.object({
 });
 
 export type TimezoneUpdateInput = z.infer<typeof TimezoneUpdateSchema>;
+
+/**
+ * Determines whether the timezone difference banner should be shown.
+ */
+export function shouldShowTimezoneBanner(
+  browserTz: string | null,
+  profileTz: string,
+  isDismissed: boolean
+): boolean {
+  if (isDismissed || !browserTz || browserTz === 'Factory') {
+    return false;
+  }
+  return browserTz !== profileTz;
+}
