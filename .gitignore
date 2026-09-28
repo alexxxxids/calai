@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+
+# Next.js build output and generated files
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# secrets: every .env file except the template
+.env*
+!.env.example
+
+# Supabase CLI local state (project link, temp files)
+supabase/.temp/
+supabase/.branches/
+
+# Vercel CLI link
+.vercel/
+
+# test coverage
+coverage/
+
+# textbook build
+textbook/build/node_modules/
+textbook/dist/
+
+# logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Textbook production workspace for AI agents (not part of the project)
+.agents/

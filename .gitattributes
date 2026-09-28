@@ -1,0 +1,14 @@
+# Git stores text files with LF on every machine, whatever the OS settings are.
+# Without this, Windows checkouts get CRLF and every file looks changed in diffs.
+* text=auto eol=lf
+
+# Binary files: never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
