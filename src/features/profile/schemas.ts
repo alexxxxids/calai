@@ -140,3 +140,16 @@ export function shouldShowTimezoneBanner(
   }
   return browserTz !== profileTz;
 }
+
+export const COMMON_TIMEZONES = [
+  'Europe/Warsaw',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Kyiv',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Asia/Tokyo',
+  'UTC',
+] as const;
