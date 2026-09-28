@@ -45,8 +45,8 @@ const SECTIONS: readonly PolicySection[] = [
   {
     title: 'Gdzie są twoje dane i kto je widzi',
     items: [
-      'Supabase: baza danych, logowanie i tymczasowe pliki. Serwery w Unii Europejskiej, we Frankfurcie nad Menem.',
-      'Vercel: serwery, na których działa aplikacja. Kod obsługujący twoje żądania działa we Frankfurcie.',
+      'Supabase: baza danych, logowanie i tymczasowe pliki. Serwery w Unii Europejskiej (region Frankfurt nad Menem).',
+      'Vercel: serwery, na których działa aplikacja. Kod obsługujący twoje żądania działa w regionie Frankfurt (fra1).',
       'Brevo: wysyłka wiadomości e-mail z kodami. Widzi twój adres e-mail i treść wiadomości.',
       'Google (Gemini API): analiza plików, które sam wyślesz asystentowi AI. Wysyłamy je z wyłączonym zapisywaniem rozmowy po stronie Google.',
     ],
