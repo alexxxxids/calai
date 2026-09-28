@@ -1,4 +1,3 @@
-import 'server-only';
 import type { AuthError } from '@supabase/supabase-js';
 import { fail, unexpected, type ActionResult } from '@/lib/action-result';
 
