@@ -54,14 +54,24 @@ export function formatDateTime(instant: Date | number, timeZone: string): string
 
 // ── Energy of a task type (spec §3; the database keeps it within 0–3) ──────────────
 
-export const ENERGY_LEVELS = [0, 1, 2, 3] as const;
+export const ENERGY_RECOVERY = 0;
+export const ENERGY_LIGHT = 1;
+export const ENERGY_MEDIUM = 2;
+export const ENERGY_HEAVY = 3;
+
+export const ENERGY_LEVELS = [
+  ENERGY_RECOVERY,
+  ENERGY_LIGHT,
+  ENERGY_MEDIUM,
+  ENERGY_HEAVY,
+] as const;
 export type EnergyLevel = (typeof ENERGY_LEVELS)[number];
 
 export const ENERGY_LABEL = {
-  0: 'regeneracja',
-  1: 'lekkie',
-  2: 'średnie',
-  3: 'ciężkie',
+  [ENERGY_RECOVERY]: 'regeneracja',
+  [ENERGY_LIGHT]: 'lekkie',
+  [ENERGY_MEDIUM]: 'średnie',
+  [ENERGY_HEAVY]: 'ciężkie',
 } as const satisfies Record<EnergyLevel, string>;
 
 /** A database number → its Polish name; the number itself if it is not a known level. */
@@ -72,27 +82,43 @@ export function formatEnergy(energy: number): string {
 
 // ── Days of the week, ISO numbering: 1 = Monday … 7 = Sunday ──────────────────────
 
-export const ISO_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const MONDAY = 1;
+export const TUESDAY = 2;
+export const WEDNESDAY = 3;
+export const THURSDAY = 4;
+export const FRIDAY = 5;
+export const SATURDAY = 6;
+export const SUNDAY = 7;
+
+export const ISO_WEEKDAYS = [
+  MONDAY,
+  TUESDAY,
+  WEDNESDAY,
+  THURSDAY,
+  FRIDAY,
+  SATURDAY,
+  SUNDAY,
+] as const;
 export type IsoWeekday = (typeof ISO_WEEKDAYS)[number];
 
 export const WEEKDAY_SHORT = {
-  1: 'pn',
-  2: 'wt',
-  3: 'śr',
-  4: 'cz',
-  5: 'pt',
-  6: 'sb',
-  7: 'nd',
+  [MONDAY]: 'pn',
+  [TUESDAY]: 'wt',
+  [WEDNESDAY]: 'śr',
+  [THURSDAY]: 'cz',
+  [FRIDAY]: 'pt',
+  [SATURDAY]: 'sb',
+  [SUNDAY]: 'nd',
 } as const satisfies Record<IsoWeekday, string>;
 
 export const WEEKDAY_NAME = {
-  1: 'poniedziałek',
-  2: 'wtorek',
-  3: 'środa',
-  4: 'czwartek',
-  5: 'piątek',
-  6: 'sobota',
-  7: 'niedziela',
+  [MONDAY]: 'poniedziałek',
+  [TUESDAY]: 'wtorek',
+  [WEDNESDAY]: 'środa',
+  [THURSDAY]: 'czwartek',
+  [FRIDAY]: 'piątek',
+  [SATURDAY]: 'sobota',
+  [SUNDAY]: 'niedziela',
 } as const satisfies Record<IsoWeekday, string>;
 
 /** [1, 3, 5] → 'pn, śr, pt'; all seven days → 'codziennie'. Order follows the week. */

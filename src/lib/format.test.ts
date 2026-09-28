@@ -21,7 +21,9 @@ describe('formatMinutes', () => {
   });
 
   it('should show only hours when the minutes are a whole hour', () => {
+    expect(formatMinutes(60)).toBe('1 h');
     expect(formatMinutes(120)).toBe('2 h');
+    expect(formatMinutes(600)).toBe('10 h');
   });
 
   it('should show only minutes when it is less than an hour', () => {
