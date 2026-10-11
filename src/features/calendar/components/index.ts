@@ -14,4 +14,9 @@ export {
   DEFAULT_VIEW,
   type CalendarViewProps,
 } from './calendar-view';
+export {
+  CloseDayBanner,
+  type CloseDayBannerProps,
+  type ExecuteCloseBlockParams,
+} from './close-day-banner';
 export * from './calendar-helpers';
