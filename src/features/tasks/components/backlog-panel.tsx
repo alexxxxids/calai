@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { runPlanner, type RunPlannerResult } from '@/features/planner';
+import { runPlanner } from '@/features/planner/run-planner';
+import type { RunPlannerResult } from '@/features/planner/types';
 import type { BacklogTaskItem } from '../types';
 import { BacklogItem } from './backlog-item';
 import { TaskFormDialog } from './task-form-dialog';
