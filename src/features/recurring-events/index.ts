@@ -26,3 +26,8 @@ export {
 export { listRecurringEvents } from './queries';
 
 export { createRecurringEvents, deleteRecurringEvent } from './actions';
+
+export {
+  RecurringEventsDialog,
+  type RecurringEventsDialogProps,
+} from './components/recurring-events-dialog';
