@@ -19,4 +19,9 @@ export {
   type CloseDayBannerProps,
   type ExecuteCloseBlockParams,
 } from './close-day-banner';
+export {
+  CalendarSidebar,
+  type CalendarSidebarProps,
+  type TaskTypeSidebarItem,
+} from './calendar-sidebar';
 export * from './calendar-helpers';
