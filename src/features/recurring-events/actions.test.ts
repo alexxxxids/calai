@@ -31,6 +31,7 @@ interface QueryResult {
 interface MockDbConfig {
   insertError?: { message?: string; code?: string } | null;
   deleteError?: { message?: string; code?: string } | null;
+  deleteData?: unknown;
   selectData?: unknown;
   selectError?: { message?: string; code?: string } | null;
 }
@@ -66,8 +67,12 @@ function buildMockSupabase(config: MockDbConfig = {}) {
               deleteEqCalls.push({ column, value });
               return deleteQuery;
             }),
+            select: vi.fn(() => deleteQuery),
             then: (resolve: (val: QueryResult) => unknown, reject?: (err: unknown) => unknown) => {
-              const result: QueryResult = { data: null, error: config.deleteError ?? null };
+              const result: QueryResult = {
+                data: config.deleteData !== undefined ? config.deleteData : [{ id: 'mock-id' }],
+                error: config.deleteError ?? null,
+              };
               return Promise.resolve(result).then(resolve, reject);
             },
           };
@@ -378,6 +383,23 @@ describe('recurring-events actions: deleteRecurringEvent', () => {
     expect(replanForUser).not.toHaveBeenCalled();
   });
 
+  it('does not replan or revalidate when deleted event does not exist (G8)', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: userId, email: 'test@example.com' });
+    const { mockClient } = buildMockSupabase({
+      deleteData: [],
+    });
+    vi.mocked(createClient).mockResolvedValue(mockClient);
+
+    const result = await deleteRecurringEvent({ id: eventId });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Nie znaleziono powtarzającego się wydarzenia',
+    });
+    expect(replanForUser).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it('returns unexpected when unhandled exception occurs during delete', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(getCurrentUser).mockResolvedValue({ id: userId, email: 'test@example.com' });
@@ -483,13 +505,13 @@ describe('recurring-events queries: listRecurringEvents', () => {
     ]);
   });
 
-  it('throws descriptive Polish error on database error', async () => {
+  it('throws descriptive Polish error without leaking database details on database error (G4)', async () => {
     const { mockClient } = buildMockSupabase({
       selectError: { message: 'relation not found' },
     });
 
-    await expect(listRecurringEvents(mockClient, userId)).rejects.toThrow(
-      'Nie udało się pobrać powtarzających się wydarzeń: relation not found',
+    await expect(listRecurringEvents(mockClient, userId)).rejects.toThrowError(
+      /^Nie udało się pobrać powtarzających się wydarzeń$/,
     );
   });
 });

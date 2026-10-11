@@ -229,6 +229,7 @@ export function CalendarSidebarView({
         taskTypes={taskTypes}
         events={recurringEvents}
         onEventsChanged={onRecurringEventsChanged}
+        timeZone={timeZone}
       />
     </aside>
   );

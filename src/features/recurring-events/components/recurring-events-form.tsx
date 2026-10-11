@@ -161,63 +161,88 @@ function RecurringEventBasicFields({
   );
 }
 
+interface TitleFieldProps {
+  readonly title: string;
+  readonly onTitleChange: (val: string) => void;
+}
+
+function RecurringEventTitleField({ title, onTitleChange }: TitleFieldProps) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor="rec-title">Nazwa zajęć</Label>
+      <Input
+        id="rec-title"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder="np. Matematyka"
+        maxLength={RECURRING_EVENT_TITLE_MAX_LENGTH}
+        required
+      />
+    </div>
+  );
+}
+
+export interface RecurringEventFormProps {
+  readonly taskTypes: readonly TaskTypeOption[];
+  readonly onCreated?: () => void;
+  readonly timeZone?: string;
+  readonly isSubmitting?: boolean;
+  readonly onSubmittingChange?: (submitting: boolean) => void;
+}
+
 export function RecurringEventForm({
   taskTypes,
   onCreated,
-}: {
-  readonly taskTypes: readonly TaskTypeOption[];
-  readonly onCreated?: () => void;
-}) {
+  timeZone = DEFAULT_WARSAW_TIMEZONE,
+  isSubmitting: controlledIsSubmitting,
+  onSubmittingChange,
+}: RecurringEventFormProps) {
   const [title, setTitle] = React.useState('');
   const [selectedTypeId, setSelectedTypeId] = React.useState('');
   const [weekday, setWeekday] = React.useState(DEFAULT_WEEKDAY);
   const [startTime, setStartTime] = React.useState(DEFAULT_START_TIME);
   const [endTime, setEndTime] = React.useState(DEFAULT_END_TIME);
   const [validFrom, setValidFrom] = React.useState(() =>
-    instantToLocalDate(Date.now(), DEFAULT_WARSAW_TIMEZONE),
+    instantToLocalDate(Date.now(), timeZone),
   );
   const [validUntil, setValidUntil] = React.useState('');
-  const [isPending, startTransition] = React.useTransition();
+  const [internalPending, startTransition] = React.useTransition();
+  const isPending =
+    controlledIsSubmitting !== undefined ? controlledIsSubmitting : internalPending;
 
   const effectiveTypeId = selectedTypeId || (taskTypes[0]?.id ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    onSubmittingChange?.(true);
     startTransition(async () => {
-      await submitRecurringEvent(
-        {
-          title,
-          typeId: effectiveTypeId,
-          weekday,
-          startTime,
-          endTime,
-          validFrom,
-          validUntil,
-        },
-        createRecurringEvents,
-        () => {
-          setTitle('');
-          onCreated?.();
-        },
-      );
+      try {
+        await submitRecurringEvent(
+          {
+            title,
+            typeId: effectiveTypeId,
+            weekday,
+            startTime,
+            endTime,
+            validFrom,
+            validUntil,
+          },
+          createRecurringEvents,
+          () => {
+            setTitle('');
+            onCreated?.();
+          },
+        );
+      } finally {
+        onSubmittingChange?.(false);
+      }
     });
   };
-
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <h3 className="text-sm font-semibold">Dodaj nowe zajęcia</h3>
-      <div className="space-y-1">
-        <Label htmlFor="rec-title">Nazwa zajęć</Label>
-        <Input
-          id="rec-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="np. Matematyka"
-          maxLength={RECURRING_EVENT_TITLE_MAX_LENGTH}
-          required
-        />
-      </div>
+      <RecurringEventTitleField title={title} onTitleChange={setTitle} />
 
       <RecurringEventBasicFields
         typeId={effectiveTypeId}

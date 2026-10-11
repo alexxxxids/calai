@@ -91,11 +91,15 @@ function validateEventTitleAndType(title: string, typeId: string): string | unde
   return undefined;
 }
 
+function toComparableTime(time: string): string {
+  return time.length === TIME_DISPLAY_LENGTH ? `${time}:00` : time;
+}
+
 function validateEventTimeRange(startTime: string, endTime: string): string | undefined {
   if (!startTime || !endTime) {
     return 'Podaj czas rozpoczęcia i zakończenia';
   }
-  if (endTime <= startTime) {
+  if (toComparableTime(endTime) <= toComparableTime(startTime)) {
     return 'Czas zakończenia musi być późniejszy niż czas rozpoczęcia';
   }
   return undefined;

@@ -137,6 +137,29 @@ describe('close-day-banner component and actions', () => {
       // Assert
       expect(htmlUtc).toContain('08:00 – 09:30');
     });
+
+    it('should disable action buttons for all blocks when any block is pending', () => {
+      // Arrange
+      const blocks: readonly UnclosedBlockItem[] = [
+        createMockUnclosedBlock({ id: 'b-1', typeName: 'Matematyka' }),
+        createMockUnclosedBlock({ id: 'b-2', typeName: 'Historia' }),
+      ];
+
+      // Act
+      const html = renderToStaticMarkup(
+        React.createElement(CloseDayBanner, {
+          unclosedBlocks: blocks,
+          pendingBlockId: 'b-1',
+        }),
+      );
+
+      // Match disabled buttons for each block
+      expect(html).toMatch(/data-testid="unclosed-block-b-1"[\s\S]*?disabled/);
+      expect(html).toMatch(/data-testid="unclosed-block-b-2"[\s\S]*?disabled/);
+      // Both blocks should have disabled buttons
+      const disabledCount = (html.match(/disabled=""/g) ?? html.match(/disabled(?=[ >])/g) ?? []).length;
+      expect(disabledCount).toBe(4);
+    });
   });
 
   describe('executeCloseDayBlock action handling', () => {

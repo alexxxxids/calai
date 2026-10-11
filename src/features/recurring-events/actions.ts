@@ -104,14 +104,19 @@ export async function deleteRecurringEvent(
       return unauthorized();
     }
 
-    const { error: deleteError } = await supabase
+    const { data: deletedRows, error: deleteError } = await supabase
       .from('recurring_events')
       .delete()
       .eq('id', parsed.data.id)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select('id');
 
     if (deleteError) {
       return fail('Nie udało się usunąć powtarzającego się wydarzenia');
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      return fail('Nie znaleziono powtarzającego się wydarzenia');
     }
 
     await replanForUser(supabase, user.id, new Date());

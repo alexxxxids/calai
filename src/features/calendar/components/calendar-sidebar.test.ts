@@ -23,16 +23,19 @@ vi.mock('@/features/recurring-events/components/recurring-events-dialog', () => 
     open,
     taskTypes,
     events,
+    timeZone,
   }: {
     open: boolean;
     taskTypes: readonly unknown[];
     events?: readonly unknown[];
+    timeZone?: string;
   }) =>
     React.createElement('div', {
       'data-testid': 'mock-recurring-dialog',
       'data-open': String(open),
       'data-task-types-count': String(taskTypes.length),
       'data-events-count': String(events?.length ?? 0),
+      'data-timezone': timeZone ?? '',
     }),
 }));
 
@@ -525,6 +528,7 @@ describe('calendar-sidebar components and logic', () => {
         selectedDayStr: '2026-10-11',
         recurringEvents,
         onRecurringEventsChanged: onEventsChanged,
+        timeZone: 'Europe/Warsaw',
         isDialogOpen: true,
         onDialogOpenChange,
       };
@@ -540,6 +544,7 @@ describe('calendar-sidebar components and logic', () => {
       expect(dialogChild.props.taskTypes).toEqual(taskTypes);
       expect(dialogChild.props.events).toEqual(recurringEvents);
       expect(dialogChild.props.onEventsChanged).toBe(onEventsChanged);
+      expect(dialogChild.props.timeZone).toBe('Europe/Warsaw');
     });
   });
 });

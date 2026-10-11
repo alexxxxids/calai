@@ -61,7 +61,7 @@ export async function listRecurringEvents(
     .order('start_time', { ascending: true });
 
   if (error) {
-    throw new Error(`Nie udało się pobrać powtarzających się wydarzeń: ${error.message}`);
+    throw new Error('Nie udało się pobrać powtarzających się wydarzeń');
   }
 
   const rows = (data ?? []) as unknown as readonly RawRecurringEventRow[];

@@ -33,6 +33,9 @@ export interface RecurringEventsDialogProps {
   readonly taskTypes: readonly TaskTypeOption[];
   readonly events?: readonly RecurringEventWithRelations[];
   readonly onEventsChanged?: () => void;
+  readonly timeZone?: string;
+  readonly deletingId?: string | null;
+  readonly isSubmitting?: boolean;
 }
 
 function RecurringEventRow({
@@ -89,16 +92,18 @@ function RecurringEventRow({
   );
 }
 
-function WeekdayEventsSection({
+export function WeekdayEventsSection({
   events,
   taskTypes,
   onDelete,
   deletingId,
+  isSubmitting = false,
 }: {
   readonly events?: readonly RecurringEventWithRelations[];
   readonly taskTypes: readonly TaskTypeOption[];
   readonly onDelete: (id: string) => void;
   readonly deletingId: string | null;
+  readonly isSubmitting?: boolean;
 }) {
   const eventsByWeekday = React.useMemo(() => groupEventsByWeekday(events), [events]);
   const hasEvents = (events?.length ?? 0) > 0;
@@ -110,6 +115,8 @@ function WeekdayEventsSection({
       </div>
     );
   }
+
+  const isDeletingAny = Boolean(deletingId) || isSubmitting;
 
   return (
     <div className="space-y-3">
@@ -130,7 +137,7 @@ function WeekdayEventsSection({
                   event={event}
                   taskTypes={taskTypes}
                   onDelete={onDelete}
-                  isDeleting={deletingId === event.id}
+                  isDeleting={isDeletingAny}
                 />
               ))}
             </div>
@@ -147,19 +154,30 @@ export function RecurringEventsDialog({
   taskTypes,
   events,
   onEventsChanged,
+  timeZone,
+  deletingId: propsDeletingId,
+  isSubmitting: propsIsSubmitting,
 }: RecurringEventsDialogProps) {
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [internalDeletingId, setInternalDeletingId] = React.useState<string | null>(null);
+  const [internalIsSubmitting, setInternalIsSubmitting] = React.useState(false);
+
+  const deletingId = propsDeletingId !== undefined ? propsDeletingId : internalDeletingId;
+  const isSubmitting = propsIsSubmitting !== undefined ? propsIsSubmitting : internalIsSubmitting;
+  const isLocked = Boolean(deletingId) || isSubmitting;
 
   const handleDelete = (id: string) => {
-    setDeletingId(id);
+    if (isLocked) {
+      return;
+    }
+    setInternalDeletingId(id);
     void executeDeleteRecurringEvent(
       () => deleteRecurringEvent({ id }),
       () => {
-        setDeletingId(null);
+        setInternalDeletingId(null);
         onEventsChanged?.();
       },
     ).finally(() => {
-      setDeletingId(null);
+      setInternalDeletingId(null);
     });
   };
 
@@ -179,11 +197,18 @@ export function RecurringEventsDialog({
             taskTypes={taskTypes}
             onDelete={handleDelete}
             deletingId={deletingId}
+            isSubmitting={isSubmitting}
           />
 
           <Separator />
 
-          <RecurringEventForm taskTypes={taskTypes} onCreated={onEventsChanged} />
+          <RecurringEventForm
+            taskTypes={taskTypes}
+            onCreated={onEventsChanged}
+            timeZone={timeZone}
+            isSubmitting={isSubmitting}
+            onSubmittingChange={setInternalIsSubmitting}
+          />
         </div>
 
         <DialogFooter>

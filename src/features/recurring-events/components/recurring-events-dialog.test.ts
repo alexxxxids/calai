@@ -15,8 +15,10 @@ vi.mock('../actions', () => ({
 }));
 
 import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { toast } from 'sonner';
-import { RecurringEventsDialog } from './recurring-events-dialog';
+import { RecurringEventsDialog, WeekdayEventsSection } from './recurring-events-dialog';
+import { RecurringEventForm } from './recurring-events-form';
 import {
   DEFAULT_END_TIME,
   DEFAULT_START_TIME,
@@ -327,6 +329,18 @@ describe('recurring-events dialog helpers, validation, and presentation', () => 
       expect(result.error).toBe('Czas zakończenia musi być późniejszy niż czas rozpoczęcia');
     });
 
+    it('should return isValid false when endTime equals startTime with mixed second precision', () => {
+      // Arrange
+      const invalid = { ...validForm, startTime: '08:00', endTime: '08:00:00' };
+
+      // Act
+      const result = validateRecurringEventForm(invalid);
+
+      // Assert
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('Czas zakończenia musi być późniejszy niż czas rozpoczęcia');
+    });
+
     it('should return isValid false when endTime is earlier than startTime', () => {
       // Arrange
       const invalid = { ...validForm, startTime: '09:00', endTime: '08:00' };
@@ -603,6 +617,82 @@ describe('recurring-events dialog helpers, validation, and presentation', () => 
       // Assert
       expect(element).toBeDefined();
       expect(element.props.open).toBe(false);
+    });
+  });
+
+  describe('WeekdayEventsSection deletion locking (G3)', () => {
+    it('should disable delete buttons for all events when deletingId is active', () => {
+      // Arrange
+      const events = [
+        createMockRecurringEvent({ id: 'rec-1', title: 'Matematyka', weekday: 1 }),
+        createMockRecurringEvent({ id: 'rec-2', title: 'Fizyka', weekday: 1 }),
+      ];
+      const taskTypes = [{ id: 'type-1', name: 'Szkoła', color: '#3b82f6' }];
+
+      // Act
+      const html = renderToStaticMarkup(
+        React.createElement(WeekdayEventsSection, {
+          events,
+          taskTypes,
+          onDelete: vi.fn(),
+          deletingId: 'rec-1',
+        }),
+      );
+
+      // Assert: Both rec-1 and rec-2 delete buttons must be disabled to prevent concurrent deletion
+      const disabledCount = (html.match(/disabled=""/g) ?? html.match(/disabled(?=[ >])/g) ?? []).length;
+      expect(disabledCount).toBe(2);
+    });
+
+    it('should disable delete buttons for all events when form is submitting (isSubmitting = true)', () => {
+      // Arrange
+      const events = [
+        createMockRecurringEvent({ id: 'rec-1', title: 'Matematyka', weekday: 1 }),
+        createMockRecurringEvent({ id: 'rec-2', title: 'Fizyka', weekday: 1 }),
+      ];
+      const taskTypes = [{ id: 'type-1', name: 'Szkoła', color: '#3b82f6' }];
+
+      // Act
+      const html = renderToStaticMarkup(
+        React.createElement(WeekdayEventsSection, {
+          events,
+          taskTypes,
+          onDelete: vi.fn(),
+          deletingId: null,
+          isSubmitting: true,
+        }),
+      );
+
+      // Assert
+      const disabledCount = (html.match(/disabled=""/g) ?? html.match(/disabled(?=[ >])/g) ?? []).length;
+      expect(disabledCount).toBe(2);
+    });
+  });
+
+  describe('RecurringEventForm timeZone handling (G5)', () => {
+    it('should initialize validFrom date according to provided timeZone with Warsaw fallback', () => {
+      // Mock Date.now to 2026-10-11T23:30:00Z (Warsaw is next day 2026-10-12, New York is 2026-10-11)
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-10-11T23:30:00.000Z').getTime());
+
+      const taskTypes = [{ id: 'type-1', name: 'Szkoła', color: '#3b82f6' }];
+
+      const htmlNy = renderToStaticMarkup(
+        React.createElement(RecurringEventForm, {
+          taskTypes,
+          timeZone: 'America/New_York',
+        }),
+      );
+
+      const htmlWarsaw = renderToStaticMarkup(
+        React.createElement(RecurringEventForm, {
+          taskTypes,
+        }),
+      );
+
+      expect(htmlNy).toContain('value="2026-10-11"');
+      expect(htmlWarsaw).toContain('value="2026-10-12"');
+
+      nowSpy.mockRestore();
     });
   });
 });

@@ -109,6 +109,37 @@ describe('recurring-events schemas', () => {
       }
     });
 
+    it('accepts valid input with empty string validUntil coerced to null (G7)', () => {
+      const result = RecurringEventItemSchema.safeParse({
+        ...validEventBase,
+        validUntil: '',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.validUntil).toBeNull();
+      }
+    });
+
+    it('rejects non-existent calendar date for validFrom (G6)', () => {
+      const result = RecurringEventItemSchema.safeParse({
+        ...validEventBase,
+        validFrom: '2026-02-31',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects non-existent calendar date for validUntil (G6)', () => {
+      const result = RecurringEventItemSchema.safeParse({
+        ...validEventBase,
+        validFrom: '2026-01-01',
+        validUntil: '2026-02-31',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
     it('accepts title with exactly 1 character', () => {
       const result = RecurringEventItemSchema.safeParse({
         ...validEventBase,

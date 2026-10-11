@@ -162,6 +162,7 @@ export interface CloseDayBannerProps {
   readonly timeZone?: string;
   readonly onBlockClosed?: (blockId: string) => void;
   readonly closeAction?: ExecuteCloseBlockParams['closeAction'];
+  readonly pendingBlockId?: string | null;
 }
 
 export function CloseDayBanner({
@@ -169,8 +170,11 @@ export function CloseDayBanner({
   timeZone = DEFAULT_WARSAW_TIMEZONE,
   onBlockClosed,
   closeAction,
+  pendingBlockId: propsPendingBlockId,
 }: CloseDayBannerProps) {
-  const [pendingBlockId, setPendingBlockId] = React.useState<string | null>(null);
+  const [internalPendingBlockId, setInternalPendingBlockId] = React.useState<string | null>(null);
+  const pendingBlockId =
+    propsPendingBlockId !== undefined ? propsPendingBlockId : internalPendingBlockId;
 
   if (unclosedBlocks.length === 0) {
     return null;
@@ -180,7 +184,7 @@ export function CloseDayBanner({
     if (pendingBlockId) {
       return;
     }
-    setPendingBlockId(b.id);
+    setInternalPendingBlockId(b.id);
     try {
       await executeCloseDayBlock({
         blockId: b.id,
@@ -190,7 +194,7 @@ export function CloseDayBanner({
         onBlockClosed,
       });
     } finally {
-      setPendingBlockId(null);
+      setInternalPendingBlockId(null);
     }
   };
 
@@ -198,7 +202,7 @@ export function CloseDayBanner({
     if (pendingBlockId) {
       return;
     }
-    setPendingBlockId(b.id);
+    setInternalPendingBlockId(b.id);
     try {
       await executeCloseDayBlock({
         blockId: b.id,
@@ -207,7 +211,7 @@ export function CloseDayBanner({
         onBlockClosed,
       });
     } finally {
-      setPendingBlockId(null);
+      setInternalPendingBlockId(null);
     }
   };
 
@@ -224,7 +228,7 @@ export function CloseDayBanner({
             key={block.id}
             block={block}
             timeZone={timeZone}
-            isPending={pendingBlockId === block.id}
+            isPending={Boolean(pendingBlockId)}
             onDone={handleDone}
             onMiss={handleMiss}
           />

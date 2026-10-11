@@ -12,6 +12,25 @@ export const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const TIME_SHORT_LENGTH = 5;
 
+export function isValidCalendarDate(date: string): boolean {
+  if (!ISO_DATE_REGEX.test(date)) {
+    return false;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) {
+    return false;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
 function toComparableTime(time: string): string {
   return time.length === TIME_SHORT_LENGTH ? `${time}:00` : time;
 }
@@ -52,15 +71,26 @@ export const RecurringEventItemSchema = z
       .regex(
         ISO_DATE_REGEX,
         'Nieprawidłowy format daty początkowej (oczekiwano YYYY-MM-DD)',
-      ),
-    validUntil: z
-      .string()
-      .regex(
-        ISO_DATE_REGEX,
-        'Nieprawidłowy format daty końcowej (oczekiwano YYYY-MM-DD)',
       )
-      .nullable()
-      .optional(),
+      .refine(
+        isValidCalendarDate,
+        'Data początkowa nie istnieje w kalendarzu',
+      ),
+    validUntil: z.preprocess(
+      (val) => (val === '' ? null : val),
+      z
+        .string()
+        .regex(
+          ISO_DATE_REGEX,
+          'Nieprawidłowy format daty końcowej (oczekiwano YYYY-MM-DD)',
+        )
+        .refine(
+          isValidCalendarDate,
+          'Data końcowa nie istnieje w kalendarzu',
+        )
+        .nullable()
+        .optional(),
+    ),
   })
   .refine(
     (data) => toComparableTime(data.endTime) > toComparableTime(data.startTime),
