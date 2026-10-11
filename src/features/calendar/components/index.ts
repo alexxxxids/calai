@@ -24,4 +24,9 @@ export {
   type CalendarSidebarProps,
   type TaskTypeSidebarItem,
 } from './calendar-sidebar';
+export {
+  CalendarPageContent,
+  mapTaskTypesToSidebarItems,
+  type CalendarPageContentProps,
+} from './calendar-page-content';
 export * from './calendar-helpers';

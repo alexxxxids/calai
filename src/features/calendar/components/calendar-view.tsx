@@ -58,7 +58,10 @@ export interface CalendarViewProps {
   readonly workStart?: string;
   readonly timeZone?: string;
   readonly onDateChange?: (date: string) => void;
+  readonly onViewChange?: (view: string) => void;
   readonly onBlockUpdated?: () => void;
+  readonly selectedDate?: Date | string;
+  readonly hiddenTypeIds?: ReadonlySet<string>;
   readonly className?: string;
 }
 
@@ -78,7 +81,6 @@ export async function fetchCalendarEvents(fetchInfo: EventSourceFuncInfo): Promi
       toast.error('Nie udało się pobrać wydarzeń z kalendarza');
       return [];
     }
-    // Type assertion is safe because GET /api/calendar returns CalendarEventItem[] conforming to EventInput
     return (await response.json()) as EventInput[];
   } catch {
     toast.error('Błąd połączenia');
@@ -104,11 +106,8 @@ export async function executeEventDrop(info: EventDropInfo, ctx: CalendarActionC
       toast.error(result.error ?? 'Nie udało się przenieść bloku');
       return;
     }
-    if (result.data.warning) {
-      toast.warning(result.data.warning);
-    } else {
-      toast.success('Przeniesiono blok');
-    }
+    if (result.data.warning) toast.warning(result.data.warning);
+    else toast.success('Przeniesiono blok');
     ctx.refetch();
     ctx.onBlockUpdated?.();
   } catch {
@@ -123,19 +122,18 @@ export async function executeEventResize(info: EventResizeDoneInfo, ctx: Calenda
     return;
   }
   try {
-    const start = info.event.start.toISOString();
-    const end = info.event.end.toISOString();
-    const result = await moveBlock({ blockId: info.event.id, start, end });
+    const result = await moveBlock({
+      blockId: info.event.id,
+      start: info.event.start.toISOString(),
+      end: info.event.end.toISOString(),
+    });
     if (!result.ok) {
       info.revert();
       toast.error(result.error ?? 'Nie udało się zmienić czasu trwania bloku');
       return;
     }
-    if (result.data.warning) {
-      toast.warning(result.data.warning);
-    } else {
-      toast.success('Zmieniono czas trwania bloku');
-    }
+    if (result.data.warning) toast.warning(result.data.warning);
+    else toast.success('Zmieniono czas trwania bloku');
     ctx.refetch();
     ctx.onBlockUpdated?.();
   } catch {
@@ -146,9 +144,7 @@ export async function executeEventResize(info: EventResizeDoneInfo, ctx: Calenda
 
 export async function executeExternalDrop(info: DropInfo, ctx: CalendarActionContext): Promise<void> {
   const taskId = info.draggedEl.getAttribute('data-task-id');
-  if (!taskId) {
-    return;
-  }
+  if (!taskId) return;
   const durationStr = info.draggedEl.getAttribute('data-task-duration');
   const durationMinutes = parseDurationToMinutes(durationStr);
   const start = calculateDropStartIso(info.date, info.allDay, ctx.workStart, ctx.timeZone);
@@ -159,11 +155,8 @@ export async function executeExternalDrop(info: DropInfo, ctx: CalendarActionCon
       toast.error(result.error ?? 'Nie udało się zaplanować zadania');
       return;
     }
-    if (result.data.warning) {
-      toast.warning(result.data.warning);
-    } else {
-      toast.success('Zaplanowano zadanie w kalendarzu');
-    }
+    if (result.data.warning) toast.warning(result.data.warning);
+    else toast.success('Zaplanowano zadanie w kalendarzu');
     ctx.refetch();
     ctx.onBlockUpdated?.();
   } catch {
@@ -177,6 +170,7 @@ interface CalendarInteractionsParams {
   readonly timeZone: string;
   readonly onBlockUpdated?: () => void;
   readonly onDateChange?: (date: string) => void;
+  readonly onViewChange?: (view: string) => void;
   readonly onSelectBlock: (block: CalendarEventItem) => void;
 }
 
@@ -186,6 +180,7 @@ function useCalendarInteractions({
   timeZone,
   onBlockUpdated,
   onDateChange,
+  onViewChange,
   onSelectBlock,
 }: CalendarInteractionsParams) {
   const refetch = React.useCallback(() => {
@@ -197,46 +192,46 @@ function useCalendarInteractions({
     [workStart, timeZone, refetch, onBlockUpdated],
   );
 
-  const handleEventDrop = React.useCallback(
-    (info: EventDropInfo) => {
-      void executeEventDrop(info, actionContext);
-    },
-    [actionContext],
-  );
-
-  const handleEventResize = React.useCallback(
-    (info: EventResizeDoneInfo) => {
-      void executeEventResize(info, actionContext);
-    },
-    [actionContext],
-  );
-
-  const handleExternalDrop = React.useCallback(
-    (info: DropInfo) => {
-      void executeExternalDrop(info, actionContext);
-    },
-    [actionContext],
-  );
-
-  const handleEventClick = React.useCallback(
-    (info: EventClickInfo) => {
-      const block = extractBlockFromEvent(info.event);
-      if (block) {
-        onSelectBlock(block);
-      }
-    },
-    [onSelectBlock],
-  );
-
   const handleDatesSet = React.useCallback(
     (info: DatesSetInfo) => {
-      const localDay = instantToLocalDate(info.view.currentStart.getTime(), timeZone);
-      onDateChange?.(localDay);
+      onDateChange?.(instantToLocalDate(info.view.currentStart.getTime(), timeZone));
+      onViewChange?.(info.view.type);
     },
-    [timeZone, onDateChange],
+    [timeZone, onDateChange, onViewChange],
   );
 
-  return { refetch, handleEventDrop, handleEventResize, handleExternalDrop, handleEventClick, handleDatesSet };
+  return {
+    refetch,
+    handleEventDrop: (info: EventDropInfo) => { void executeEventDrop(info, actionContext); },
+    handleEventResize: (info: EventResizeDoneInfo) => { void executeEventResize(info, actionContext); },
+    handleExternalDrop: (info: DropInfo) => { void executeExternalDrop(info, actionContext); },
+    handleEventClick: (info: EventClickInfo) => {
+      const block = extractBlockFromEvent(info.event);
+      if (block) onSelectBlock(block);
+    },
+    handleDatesSet,
+  };
+}
+
+function useCalendarFilteredEvents(
+  hiddenTypeIds: ReadonlySet<string> | undefined,
+  calendarRef: React.RefObject<CalendarRef | null>,
+) {
+  React.useEffect(() => {
+    calendarRef.current?.getApi().refetchEvents();
+  }, [hiddenTypeIds, calendarRef]);
+
+  return React.useCallback(
+    async (fetchInfo: EventSourceFuncInfo) => {
+      const items = await fetchCalendarEvents(fetchInfo);
+      if (!hiddenTypeIds || hiddenTypeIds.size === 0) return items;
+      return items.filter((event) => {
+        const ext = event.extendedProps as { typeId?: string | null } | undefined;
+        return !ext?.typeId || !hiddenTypeIds.has(ext.typeId);
+      });
+    },
+    [hiddenTypeIds],
+  );
 }
 
 export function CalendarView({
@@ -244,12 +239,21 @@ export function CalendarView({
   workStart = DEFAULT_WORK_START,
   timeZone = DEFAULT_WARSAW_TIMEZONE,
   onDateChange,
+  onViewChange,
   onBlockUpdated,
+  selectedDate,
+  hiddenTypeIds,
   className,
 }: CalendarViewProps) {
   const calendarRef = React.useRef<CalendarRef | null>(null);
   const [selectedBlock, setSelectedBlock] = React.useState<CalendarEventItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (selectedDate && calendarRef.current) {
+      calendarRef.current.getApi().gotoDate(selectedDate);
+    }
+  }, [selectedDate]);
 
   const { refetch, handleEventDrop, handleEventResize, handleExternalDrop, handleEventClick, handleDatesSet } =
     useCalendarInteractions({
@@ -258,13 +262,14 @@ export function CalendarView({
       timeZone,
       onBlockUpdated,
       onDateChange,
+      onViewChange,
       onSelectBlock: (block) => {
         setSelectedBlock(block);
         setIsDialogOpen(true);
       },
     });
 
-  const scrollTimeString = `${workStart}:00`;
+  const handleFetchEvents = useCalendarFilteredEvents(hiddenTypeIds, calendarRef);
 
   return (
     <div className={className}>
@@ -279,11 +284,11 @@ export function CalendarView({
         slotDuration={DEFAULT_SLOT_DURATION}
         slotMinTime={DEFAULT_SLOT_MIN_TIME}
         slotMaxTime={DEFAULT_SLOT_MAX_TIME}
-        scrollTime={scrollTimeString}
+        scrollTime={`${workStart}:00`}
         nowIndicator={true}
         editable={true}
         droppable={true}
-        events={fetchCalendarEvents}
+        events={handleFetchEvents}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         drop={handleExternalDrop}
