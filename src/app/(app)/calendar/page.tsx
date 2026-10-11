@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { listUnclosedBlocks } from '@/features/blocks/queries';
 import { CalendarPageContent } from '@/features/calendar/components/calendar-page-content';
 import { getProfile } from '@/features/profile/queries';
+import { listRecurringEvents } from '@/features/recurring-events/queries';
 import { listTaskTypes } from '@/features/task-types/queries';
 import { listBacklog } from '@/features/tasks/queries';
 import { requireUser } from '@/lib/auth';
@@ -29,14 +30,15 @@ export default async function CalendarPage() {
   const { user } = await requireUser();
   const supabase = await createClient();
 
-  const [profile, taskTypes, tasks, unclosedBlocks] = await Promise.all([
+  const [profile, taskTypes, tasks, unclosedBlocks, recurringEvents] = await Promise.all([
     getProfile(supabase, user.id),
     listTaskTypes(supabase, user.id),
     listBacklog(supabase, user.id),
     listUnclosedBlocks(supabase, user.id),
+    listRecurringEvents(supabase, user.id),
   ]);
 
-  const timeZone = profile?.timezone ?? DEFAULT_TIMEZONE;
+  const timeZone = profile?.timezone || DEFAULT_TIMEZONE;
   const workStart = parseWorkStart(profile?.day_start);
 
   return (
@@ -45,6 +47,7 @@ export default async function CalendarPage() {
         tasks={tasks}
         taskTypes={taskTypes}
         unclosedBlocks={unclosedBlocks}
+        recurringEvents={recurringEvents}
         timeZone={timeZone}
         workStart={workStart}
       />

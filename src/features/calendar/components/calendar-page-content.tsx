@@ -12,13 +12,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { instantToLocalDate } from '@/domain/time';
+import { instantToLocalDate, weekStart } from '@/domain/time';
 import type { UnclosedBlockItem } from '@/features/blocks/types';
+import type { RecurringEventWithRelations } from '@/features/recurring-events/types';
 import type { TaskTypeRow } from '@/features/task-types';
 import { BacklogPanel } from '@/features/tasks/components/backlog-panel';
 import type { BacklogTaskItem } from '@/features/tasks/types';
 
 import {
+  dateToYmdString,
   DEFAULT_WARSAW_TIMEZONE,
   DEFAULT_WORK_START,
 } from './calendar-helpers';
@@ -30,6 +32,7 @@ export interface CalendarPageContentProps {
   readonly tasks: readonly BacklogTaskItem[];
   readonly taskTypes: readonly TaskTypeRow[];
   readonly unclosedBlocks: readonly UnclosedBlockItem[];
+  readonly recurringEvents?: readonly RecurringEventWithRelations[];
   readonly timeZone?: string;
   readonly workStart?: string;
   readonly onDataUpdated?: () => void;
@@ -39,12 +42,30 @@ export interface CalendarPageContentProps {
 export function mapTaskTypesToSidebarItems(
   taskTypes: readonly TaskTypeRow[],
 ): readonly TaskTypeSidebarItem[] {
-  return taskTypes.map((type) => ({
-    id: type.id,
-    name: type.name,
-    color: type.color,
-    energy: type.energy,
-  }));
+  return taskTypes
+    .filter((type) => !type.is_one_off)
+    .map((type) => ({
+      id: type.id,
+      name: type.name,
+      color: type.color,
+      energy: type.energy,
+    }));
+}
+
+/**
+ * Resolves new selectedDayStr when calendar reports date navigation (info.view.currentStart).
+ * In week or month views, if the incoming date matches the week start of the already selected day,
+ * the specific day selected by the user is preserved (G6).
+ */
+export function resolveCalendarDateChange(
+  currentDayStr: string,
+  incomingDateStr: string,
+  currentView: string,
+): string {
+  if (currentView !== 'timeGridDay' && weekStart(currentDayStr) === incomingDateStr) {
+    return currentDayStr;
+  }
+  return incomingDateStr;
 }
 
 interface CalendarMobileBarProps {
@@ -105,17 +126,41 @@ function CalendarDesktopColumns({
       <aside aria-label="Panel boczny zadań" className="hidden lg:block w-80 shrink-0">
         <div className="sticky top-6">{backlog}</div>
       </aside>
-      <main aria-label="Widok kalendarza" className="flex-1 min-w-0 w-full">
+      <section aria-label="Widok kalendarza" className="flex-1 min-w-0 w-full">
         {calendar}
-      </main>
-      <aside aria-label="Panel boczny nawigacji kalendarza" className="w-full lg:w-72 shrink-0">
+      </section>
+      <div className="w-full lg:w-72 shrink-0">
         <div className="sticky top-6">{sidebar}</div>
-      </aside>
+      </div>
     </div>
   );
 }
 
-function useCalendarPageState({
+function useUnclosedBlocksState(
+  unclosedBlocks: readonly UnclosedBlockItem[],
+  onRefresh: () => void,
+) {
+  const [closedBlockIds, setClosedBlockIds] = React.useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+
+  const activeUnclosedBlocks = React.useMemo(
+    () => unclosedBlocks.filter((item) => !closedBlockIds.has(item.id)),
+    [unclosedBlocks, closedBlockIds],
+  );
+
+  const handleBlockClosed = React.useCallback(
+    (blockId: string) => {
+      setClosedBlockIds((prev) => new Set(prev).add(blockId));
+      onRefresh();
+    },
+    [onRefresh],
+  );
+
+  return { activeUnclosedBlocks, handleBlockClosed };
+}
+
+export function useCalendarPageState({
   unclosedBlocks,
   timeZone,
   onDataUpdated,
@@ -125,9 +170,7 @@ function useCalendarPageState({
   readonly onDataUpdated?: () => void;
 }) {
   const router = useRouter();
-  const [closedBlockIds, setClosedBlockIds] = React.useState<ReadonlySet<string>>(
-    () => new Set<string>(),
-  );
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
   const [selectedDate, setSelectedDate] = React.useState<Date>(() => new Date());
   const [selectedDayStr, setSelectedDayStr] = React.useState<string>(() =>
     instantToLocalDate(Date.now(), timeZone),
@@ -138,30 +181,36 @@ function useCalendarPageState({
   );
   const [isMobileBacklogOpen, setIsMobileBacklogOpen] = React.useState(false);
 
-  const activeUnclosedBlocks = React.useMemo(
-    () => unclosedBlocks.filter((item) => !closedBlockIds.has(item.id)),
-    [unclosedBlocks, closedBlockIds],
-  );
-
   const handleRefresh = React.useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
     onDataUpdated?.();
     router.refresh();
   }, [onDataUpdated, router]);
 
-  const handleBlockClosed = React.useCallback(
-    (blockId: string) => {
-      setClosedBlockIds((prev) => new Set(prev).add(blockId));
-      handleRefresh();
-    },
-    [handleRefresh],
+  const { activeUnclosedBlocks, handleBlockClosed } = useUnclosedBlocksState(
+    unclosedBlocks,
+    handleRefresh,
   );
 
   const handleDateSelect = React.useCallback(
     (date: Date) => {
       setSelectedDate(date);
-      setSelectedDayStr(instantToLocalDate(date.getTime(), timeZone));
+      setSelectedDayStr(dateToYmdString(date));
     },
-    [timeZone],
+    [],
+  );
+
+  const handleCalendarDateChange = React.useCallback(
+    (dateStr: string) => {
+      setSelectedDayStr((prevDayStr) => {
+        const nextDayStr = resolveCalendarDateChange(prevDayStr, dateStr, currentView);
+        if (nextDayStr !== prevDayStr) {
+          setSelectedDate(new Date(`${nextDayStr}T12:00:00`));
+        }
+        return nextDayStr;
+      });
+    },
+    [currentView],
   );
 
   const handleToggleTypeVisibility = React.useCallback((typeId: string) => {
@@ -175,6 +224,7 @@ function useCalendarPageState({
 
   return {
     activeUnclosedBlocks,
+    refreshTrigger,
     selectedDate,
     selectedDayStr,
     setSelectedDayStr,
@@ -186,6 +236,7 @@ function useCalendarPageState({
     handleRefresh,
     handleBlockClosed,
     handleDateSelect,
+    handleCalendarDateChange,
     handleToggleTypeVisibility,
   };
 }
@@ -194,6 +245,7 @@ export function CalendarPageContent({
   tasks,
   taskTypes,
   unclosedBlocks,
+  recurringEvents,
   timeZone = DEFAULT_WARSAW_TIMEZONE,
   workStart = DEFAULT_WORK_START,
   onDataUpdated,
@@ -241,10 +293,11 @@ export function CalendarPageContent({
             workStart={workStart}
             timeZone={timeZone}
             selectedDate={state.selectedDate}
-            onDateChange={state.setSelectedDayStr}
+            onDateChange={state.handleCalendarDateChange}
             onViewChange={state.setCurrentView}
             onBlockUpdated={state.handleRefresh}
             hiddenTypeIds={state.hiddenTypeIds}
+            refreshTrigger={state.refreshTrigger}
           />
         }
         sidebar={
@@ -258,6 +311,8 @@ export function CalendarPageContent({
             hiddenTypeIds={state.hiddenTypeIds}
             onToggleTypeVisibility={state.handleToggleTypeVisibility}
             timeZone={timeZone}
+            recurringEvents={recurringEvents}
+            onRecurringEventsChanged={state.handleRefresh}
           />
         }
       />

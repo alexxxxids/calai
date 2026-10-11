@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calculateDropStartIso,
+  dateToYmdString,
   extractBlockFromEvent,
   formatEventTimeRange,
   getEventStatusBadge,
@@ -543,4 +544,15 @@ describe('calendar-helpers', () => {
     });
   });
 
+  describe('dateToYmdString', () => {
+    it('should format date to YYYY-MM-DD using local date components without offset shifts', () => {
+      const date = new Date(2026, 9, 15); // Month index 9 is October
+      expect(dateToYmdString(date)).toBe('2026-10-15');
+    });
+
+    it('should pad single-digit months and days with leading zeros', () => {
+      const date = new Date(2026, 0, 5); // January 5th
+      expect(dateToYmdString(date)).toBe('2026-01-05');
+    });
+  });
 });

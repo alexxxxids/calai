@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { DropInfo, EventDropInfo, EventResizeDoneInfo, EventSourceFuncInfo } from '@fullcalendar/react';
 
 vi.mock('server-only', () => ({}));
@@ -16,9 +18,33 @@ vi.mock('@/features/blocks/actions', () => ({
   scheduleTaskBlock: vi.fn(),
 }));
 
+let lastRenderedFullCalendarProps: Record<string, unknown> | null = null;
+vi.mock('@fullcalendar/react', async () => {
+  const react = await import('react');
+  return {
+    default: react.forwardRef(function MockFullCalendar(
+      props: Record<string, unknown>,
+      ref: React.ForwardedRef<unknown>,
+    ) {
+      lastRenderedFullCalendarProps = props;
+      react.useImperativeHandle(ref, () => ({
+        getApi: () => ({
+          refetchEvents: vi.fn(),
+          gotoDate: vi.fn(),
+        }),
+      }));
+      return react.createElement('div', {
+        'data-testid': 'mock-full-calendar',
+        'data-timezone': String(props.timeZone),
+      });
+    }),
+  };
+});
+
 import { toast } from 'sonner';
 import { moveBlock, scheduleTaskBlock } from '@/features/blocks/actions';
 import {
+  CalendarView,
   executeEventDrop,
   executeEventResize,
   executeExternalDrop,
@@ -170,6 +196,36 @@ describe('calendar-view async action error handling (hypotheses G1 and G2)', () 
       expect(toast.error).toHaveBeenCalledWith('Błąd połączenia');
 
       fetchSpy.mockRestore();
+    });
+  });
+
+  describe('CalendarView component rendering and props (G3)', () => {
+    it('should forward timeZone prop to FullCalendar component', () => {
+      const targetZone = 'Europe/Warsaw';
+      const html = renderToStaticMarkup(
+        React.createElement(CalendarView, {
+          timeZone: targetZone,
+          workStart: '08:00',
+        }),
+      );
+
+      expect(lastRenderedFullCalendarProps).not.toBeNull();
+      expect(lastRenderedFullCalendarProps?.timeZone).toBe(targetZone);
+      expect(html).toContain('data-timezone="Europe/Warsaw"');
+    });
+
+    it('should accept custom timeZone like Europe/London and pass to FullCalendar', () => {
+      const targetZone = 'Europe/London';
+      const html = renderToStaticMarkup(
+        React.createElement(CalendarView, {
+          timeZone: targetZone,
+          workStart: '09:00',
+          refreshTrigger: 2,
+        }),
+      );
+
+      expect(lastRenderedFullCalendarProps?.timeZone).toBe(targetZone);
+      expect(html).toContain('data-timezone="Europe/London"');
     });
   });
 });

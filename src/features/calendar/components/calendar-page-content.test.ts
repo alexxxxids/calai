@@ -54,6 +54,7 @@ import type { BacklogTaskItem } from '@/features/tasks/types';
 import {
   CalendarPageContent,
   mapTaskTypesToSidebarItems,
+  resolveCalendarDateChange,
 } from './calendar-page-content';
 
 function createMockTaskTypes(): readonly TaskTypeRow[] {
@@ -154,6 +155,30 @@ describe('CalendarPageContent', () => {
       ]);
     });
 
+    it('should filter out one-off task types (is_one_off: true) according to FR-21', () => {
+      const taskTypes: readonly TaskTypeRow[] = [
+        ...createMockTaskTypes(),
+        {
+          id: 'type-one-off',
+          user_id: 'user-1',
+          name: 'Wizyta u lekarza',
+          color: '#10b981',
+          energy: 1,
+          is_rest: false,
+          is_one_off: true,
+          archived_at: null,
+          created_at: '2026-10-01T08:00:00.000Z',
+          updated_at: '2026-10-01T08:00:00.000Z',
+        },
+      ];
+      const sidebarItems = mapTaskTypesToSidebarItems(taskTypes);
+      expect(sidebarItems).toEqual([
+        { id: 'type-1', name: 'Matematyka', color: '#3b82f6', energy: 3 },
+        { id: 'type-2', name: 'Historia', color: '#ef4444', energy: 2 },
+      ]);
+      expect(sidebarItems.some((item) => item.id === 'type-one-off')).toBe(false);
+    });
+
     it('should handle empty array', () => {
       expect(mapTaskTypesToSidebarItems([])).toEqual([]);
     });
@@ -231,8 +256,8 @@ describe('CalendarPageContent', () => {
     });
   });
 
-  describe('Responsive layout and Sheet structure', () => {
-    it('should render mobile action bar with SheetTrigger button and desktop sidebars', () => {
+  describe('Responsive layout and semantic landmarks (G4, G7, G12)', () => {
+    it('should render mobile action bar with SheetTrigger button and valid landmarks without nested main/aside', () => {
       const html = renderToStaticMarkup(
         React.createElement(CalendarPageContent, {
           tasks: createMockBacklogTasks(),
@@ -249,11 +274,33 @@ describe('CalendarPageContent', () => {
 
       // Desktop layout columns
       expect(html).toContain('aria-label="Panel boczny zadań"');
-      expect(html).toContain('aria-label="Widok kalendarza"');
-      expect(html).toContain('aria-label="Panel boczny nawigacji kalendarza"');
+      // G4: calendar column must be section, never main
+      expect(html).toContain('<section aria-label="Widok kalendarza"');
+      expect(html).not.toContain('<main');
+
+      // G12: sidebar has its own aside, and must not be wrapped inside a duplicate aside
+      expect(html).toContain('aria-label="Boczny panel kalendarza"');
+      expect(html).not.toContain('aria-label="Panel boczny nawigacji kalendarza"');
+      expect(html).not.toMatch(/<aside[^>]*>(?:(?!<\/aside>)[\s\S])*<aside/);
 
       // Check FullCalendar is rendered
       expect(html).toContain('data-testid="mock-full-calendar"');
+    });
+
+    it('should pass recurring events to CalendarSidebar and render recurring events dialog (G7)', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CalendarPageContent, {
+          tasks: [],
+          taskTypes: createMockTaskTypes(),
+          unclosedBlocks: [],
+          recurringEvents: [],
+          timeZone: 'Europe/Warsaw',
+          workStart: '08:00',
+        }),
+      );
+
+      expect(html).toContain('data-testid="mock-recurring-dialog"');
+      expect(html).toContain('Plan lekcji');
     });
 
     it('should render type filter in sidebar with correct counts and color markers', () => {
@@ -272,6 +319,35 @@ describe('CalendarPageContent', () => {
       expect(html).toContain('2/2');
       expect(html).toContain('Matematyka');
       expect(html).toContain('Historia');
+    });
+  });
+
+  describe('resolveCalendarDateChange (G6)', () => {
+    it('should preserve specifically chosen day when FullCalendar week view reports week start (Monday) of same week', () => {
+      // User selected Thursday 2026-10-15; FullCalendar timeGridWeek reports Monday 2026-10-12
+      const selected = '2026-10-15';
+      const calendarWeekStart = '2026-10-12';
+      const result = resolveCalendarDateChange(selected, calendarWeekStart, 'timeGridWeek');
+
+      expect(result).toBe('2026-10-15');
+    });
+
+    it('should update selected day when navigating to a different week in timeGridWeek', () => {
+      // User selected 2026-10-15, then clicked next week to 2026-10-19
+      const selected = '2026-10-15';
+      const newWeekStart = '2026-10-19';
+      const result = resolveCalendarDateChange(selected, newWeekStart, 'timeGridWeek');
+
+      expect(result).toBe('2026-10-19');
+    });
+
+    it('should always update selected day in timeGridDay view even if date equals Monday of current week', () => {
+      // In day view, every reported date is the specific day to display
+      const selected = '2026-10-15';
+      const mondayDay = '2026-10-12';
+      const result = resolveCalendarDateChange(selected, mondayDay, 'timeGridDay');
+
+      expect(result).toBe('2026-10-12');
     });
   });
 });

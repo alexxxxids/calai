@@ -36,12 +36,17 @@ vi.mock('@/features/blocks/queries', () => ({
   listUnclosedBlocks: vi.fn(),
 }));
 
+vi.mock('@/features/recurring-events/queries', () => ({
+  listRecurringEvents: vi.fn(),
+}));
+
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { UnclosedBlockItem } from '@/features/blocks/types';
 import { listUnclosedBlocks } from '@/features/blocks/queries';
 import type { ProfileRow } from '@/features/profile/queries';
 import { getProfile } from '@/features/profile/queries';
+import { listRecurringEvents } from '@/features/recurring-events/queries';
 import type { TaskTypeRow } from '@/features/task-types';
 import { listTaskTypes } from '@/features/task-types/queries';
 import { listBacklog } from '@/features/tasks/queries';
@@ -133,6 +138,7 @@ function setupDefaultMocks(): void {
   vi.mocked(listTaskTypes).mockResolvedValue([...createMockTaskTypes()]);
   vi.mocked(listBacklog).mockResolvedValue([...createMockBacklogTasks()]);
   vi.mocked(listUnclosedBlocks).mockResolvedValue([...createMockUnclosedBlocks()]);
+  vi.mocked(listRecurringEvents).mockResolvedValue([]);
 }
 
 describe('CalendarPage metadata', () => {
@@ -156,12 +162,14 @@ describe('CalendarPage auth and data fetching', () => {
     expect(listTaskTypes).toHaveBeenCalledWith(mockSupabase, 'user-test-123');
     expect(listBacklog).toHaveBeenCalledWith(mockSupabase, 'user-test-123');
     expect(listUnclosedBlocks).toHaveBeenCalledWith(mockSupabase, 'user-test-123');
+    expect(listRecurringEvents).toHaveBeenCalledWith(mockSupabase, 'user-test-123');
 
     expect(mockCalendarPageContent).toHaveBeenCalledWith(
       expect.objectContaining({
         tasks: expect.arrayContaining([expect.objectContaining({ id: 'task-1' })]),
         taskTypes: expect.arrayContaining([expect.objectContaining({ id: 'type-1' })]),
         unclosedBlocks: expect.arrayContaining([expect.objectContaining({ id: 'block-1' })]),
+        recurringEvents: [],
         timeZone: 'Europe/Berlin',
         workStart: '09:30',
       }),
@@ -169,6 +177,13 @@ describe('CalendarPage auth and data fetching', () => {
 
     expect(html).toContain('container mx-auto px-2 sm:px-4 py-4 sm:py-6');
     expect(html).toContain('data-testid="mock-calendar-page-content"');
+  });
+
+  it('should render exactly one main landmark element on the page (G4)', async () => {
+    const pageJsx = await CalendarPage();
+    const html = renderToStaticMarkup(pageJsx);
+    const mainMatches = html.match(/<main[\s>]/g) || [];
+    expect(mainMatches.length).toBe(1);
   });
 
   it('should propagate authentication redirection or error without querying data', async () => {
@@ -182,6 +197,7 @@ describe('CalendarPage auth and data fetching', () => {
     expect(listTaskTypes).not.toHaveBeenCalled();
     expect(listBacklog).not.toHaveBeenCalled();
     expect(listUnclosedBlocks).not.toHaveBeenCalled();
+    expect(listRecurringEvents).not.toHaveBeenCalled();
   });
 
   it('should propagate query errors if one of the queries rejects', async () => {
@@ -193,6 +209,22 @@ describe('CalendarPage auth and data fetching', () => {
 
 describe('CalendarPage profile fallbacks', () => {
   beforeEach(setupDefaultMocks);
+
+  it('should fall back to Europe/Warsaw when profile timezone is an empty string (G9)', async () => {
+    vi.mocked(getProfile).mockResolvedValueOnce(
+      createMockProfile({
+        timezone: '',
+      }),
+    );
+
+    renderToStaticMarkup(await CalendarPage());
+
+    expect(mockCalendarPageContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeZone: 'Europe/Warsaw',
+      }),
+    );
+  });
 
   it('should fall back to Europe/Warsaw and 08:00 when profile is null', async () => {
     vi.mocked(getProfile).mockResolvedValueOnce(null);
