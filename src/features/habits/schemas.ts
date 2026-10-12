@@ -48,7 +48,7 @@ export const weekdaySchema = z
   .number()
   .int()
   .min(WEEKDAY_MIN, 'Dzień tygodnia musi być między 1 a 7')
-  .max(WEEKDAY_MAX, 'Dzień tygodnia musi быть między 1 a 7');
+  .max(WEEKDAY_MAX, 'Dzień tygodnia musi być między 1 a 7');
 
 export const weekdaysListSchema = z
   .array(weekdaySchema)
