@@ -71,4 +71,12 @@ describe('parseModelOutput', () => {
   it('should return null when the text is not JSON', () => {
     expect(parseModelOutput('Oto plan: {"minutes": 45}', Schema)).toBeNull();
   });
+
+  it('should parse JSON when wrapped in a markdown code block', () => {
+    const wrappedInJsonBlock = '```json\n{"minutes": 45}\n```';
+    const wrappedInPlainBlock = '```\n{"minutes": 45}\n```';
+
+    expect(parseModelOutput(wrappedInJsonBlock, Schema)).toEqual({ minutes: 45 });
+    expect(parseModelOutput(wrappedInPlainBlock, Schema)).toEqual({ minutes: 45 });
+  });
 });

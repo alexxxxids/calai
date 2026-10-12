@@ -95,9 +95,17 @@ export function parseModelOutput<T>(text: string, schema: z.ZodType<T>): T | nul
   return parsed.success ? parsed.data : null;
 }
 
+const MARKDOWN_CODE_FENCE = /^```(?:json)?\s*([\s\S]*?)\s*```$/i;
+
+function stripMarkdownCodeFence(text: string): string {
+  const trimmed = text.trim();
+  const match = MARKDOWN_CODE_FENCE.exec(trimmed);
+  return match !== null && match[1] !== undefined ? match[1].trim() : trimmed;
+}
+
 function parseJson(text: string): unknown {
   try {
-    return JSON.parse(text);
+    return JSON.parse(stripMarkdownCodeFence(text));
   } catch {
     return undefined; // not JSON at all: the schema rejects undefined like any other bad value
   }

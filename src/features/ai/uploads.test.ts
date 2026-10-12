@@ -16,6 +16,8 @@ describe('ownUploadMimeType', () => {
   it('should return the file type when the path is an upload of this user', () => {
     expect(ownUploadMimeType(`${USER}/${FILE}.png`, USER)).toBe('image/png');
     expect(ownUploadMimeType(`${USER}/${FILE}.heic`, USER)).toBe('image/heic');
+    expect(ownUploadMimeType(`${USER}/${FILE}.jpg`, USER)).toBe('image/jpeg');
+    expect(ownUploadMimeType(`${USER}/${FILE}.jpeg`, USER)).toBe('image/jpeg');
   });
 
   it('should return null when the file is in the folder of another user', () => {

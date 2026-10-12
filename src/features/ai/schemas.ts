@@ -39,7 +39,7 @@ export const TimetableSchema = z.object({
     .array(
       z
         .object({
-          title: z.string().min(1).max(EVENT_TITLE_MAX),
+          title: z.string().trim().min(1).max(EVENT_TITLE_MAX),
           weekday: z.number().int().min(1).max(ISO_WEEKDAY_MAX),
           startTime: z.string().regex(TIME_HH_MM),
           endTime: z.string().regex(TIME_HH_MM),
@@ -89,8 +89,8 @@ const DescriptionSchema = z
 
 export const DecomposeRequestSchema = z.object({
   path: z.string().min(1),
-  typeId: TypeIdSchema.optional(),
-  deadline: LocalDateTimeSchema.optional(),
+  typeId: TypeIdSchema.nullable().optional(),
+  deadline: LocalDateTimeSchema.nullable().optional(),
   description: DescriptionSchema,
 });
 export type DecomposeRequest = z.infer<typeof DecomposeRequestSchema>;
@@ -166,8 +166,10 @@ export type TimetableDraft = z.infer<typeof TimetableDraftSchema>;
 export const ConfirmDecompositionSchema = z
   .object({
     typeId: TypeIdSchema,
-    priority: z.union([z.literal(1), z.literal(2), z.literal(PRIORITY.low)], { error: 'Wybierz priorytet.' }),
-    deadline: LocalDateTimeSchema.nullable(),
+    priority: z.union([z.literal(PRIORITY.high), z.literal(PRIORITY.normal), z.literal(PRIORITY.low)], {
+      error: 'Wybierz priorytet.',
+    }),
+    deadline: LocalDateTimeSchema.nullable().optional(),
     sessionMinutes: SessionMinutesSchema,
     topics: z.array(TopicSchema).min(1, 'Zostaw co najmniej jeden temat.').max(MAX_TOPICS_COUNT),
   })

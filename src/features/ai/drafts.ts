@@ -2,6 +2,7 @@ import { normalizeSessionMinutes } from '@/domain/scheduler';
 import { addDaysToLocalDate, isoWeekday, weekStart } from '@/domain/time';
 import type { LocalDate } from '@/domain/types';
 import {
+  MAX_ESTIMATE_MINUTES,
   MAX_NOTES_LENGTH,
   totalWorkMinutes,
   type Decomposition,
@@ -32,12 +33,21 @@ export function estimateFromTopics(topics: readonly Topic[]): number {
  * the planner's own normalizeSessionMinutes, so the draft and the plan agree (50 → 45).
  */
 export function toDecompositionDraft(output: Decomposition): DecompositionDraft {
+  const estimateMinutes = estimateFromTopics(output.topics);
+  const warnings =
+    estimateMinutes > MAX_ESTIMATE_MINUTES
+      ? [
+          ...output.warnings,
+          'Łączny czas tematów przekracza 100 godzin. Skróć lub usuń część tematów przed zapisaniem.',
+        ]
+      : output.warnings;
+
   return {
     summary: output.summary,
     sessionMinutes: normalizeSessionMinutes(output.sessionMinutes),
-    estimateMinutes: estimateFromTopics(output.topics),
+    estimateMinutes,
     topics: output.topics,
-    warnings: output.warnings,
+    warnings,
   };
 }
 

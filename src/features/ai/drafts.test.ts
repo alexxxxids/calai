@@ -45,6 +45,26 @@ describe('toDecompositionDraft', () => {
     expect(draft.sessionMinutes).toBe(45);
     expect(draft.estimateMinutes).toBe(40);
   });
+
+  it('should add a warning when the estimate exceeds MAX_ESTIMATE_MINUTES (100 hours)', () => {
+    // Arrange: 11 topics of 600 minutes = 6600 minutes (> 6000)
+    const topics = Array.from({ length: 11 }, () => ({ title: 'Temat', workMinutes: 600 }));
+    const output = {
+      summary: 'Długi projekt',
+      sessionMinutes: 60,
+      topics,
+      warnings: ['Oryginalne ostrzeżenie'],
+    };
+
+    // Act
+    const draft = toDecompositionDraft(output);
+
+    // Assert
+    expect(draft.estimateMinutes).toBe(6600);
+    expect(draft.warnings).toContain(
+      'Łączny czas tematów przekracza 100 godzin. Skróć lub usuń część tematów przed zapisaniem.',
+    );
+  });
 });
 
 describe('topicsToNotes', () => {

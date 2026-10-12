@@ -38,6 +38,16 @@ export function uploadPath(userId: string, fileId: string, mimeType: AiMimeType)
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const UPLOAD_PATH = new RegExp(`^(${UUID})/${UUID}\\.([a-z]+)$`);
 
+const EXTENSION_TO_MIME: Readonly<Record<string, AiMimeType>> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+};
+
 /**
  * The file type of an upload path, or null when the path is not an upload of this user.
  * The path comes from the browser, so it is checked strictly: exactly '<userId>/<uuid>.<known ext>',
@@ -50,6 +60,5 @@ export function ownUploadMimeType(path: string, userId: string): AiMimeType | nu
     return null;
   }
   const extension = match[2];
-  const entry = Object.entries(AI_FILE_EXTENSIONS).find(([, ext]) => ext === extension);
-  return entry !== undefined && isAiMimeType(entry[0]) ? entry[0] : null;
+  return extension !== undefined ? EXTENSION_TO_MIME[extension] ?? null : null;
 }

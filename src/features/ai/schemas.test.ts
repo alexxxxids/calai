@@ -1,13 +1,27 @@
 import { describe, expect, it } from 'vitest';
+import { PRIORITY } from '@/domain/constants';
 import {
   ConfirmDecompositionSchema,
   ConfirmTimetableSchema,
+  DecomposeRequestSchema,
   DecompositionSchema,
   LocalDateTimeSchema,
   TimetableSchema,
 } from '@/features/ai/schemas';
 
 const TYPE_ID = '3f1c2a4e-9b7d-4c1e-8f2a-1234567890ab';
+
+describe('DecomposeRequestSchema', () => {
+  it('should accept null for optional deadline and typeId', () => {
+    const input = {
+      path: `${TYPE_ID}/file.pdf`,
+      description: 'Opis',
+      typeId: null,
+      deadline: null,
+    };
+    expect(DecomposeRequestSchema.safeParse(input).success).toBe(true);
+  });
+});
 
 describe('DecompositionSchema', () => {
   const answer = {
@@ -40,6 +54,15 @@ describe('TimetableSchema', () => {
     };
 
     expect(TimetableSchema.safeParse(answer).success).toBe(false);
+  });
+
+  it('should reject a lesson when the title is only whitespace', () => {
+    const whitespaceTitle = {
+      events: [{ title: '   ', weekday: 1, startTime: '08:00', endTime: '09:00' }],
+      warnings: [],
+    };
+
+    expect(TimetableSchema.safeParse(whitespaceTitle).success).toBe(false);
   });
 
   it('should reject a lesson when endTime is earlier than or equal to startTime', () => {
@@ -87,6 +110,27 @@ describe('ConfirmDecompositionSchema', () => {
     const topics = Array.from({ length: 10 }, () => ({ title: 'Temat', workMinutes: 600 }));
 
     expect(ConfirmDecompositionSchema.safeParse({ ...draft, topics }).success).toBe(true);
+  });
+
+  it('should accept valid priority levels and reject invalid ones', () => {
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, priority: PRIORITY.high }).success).toBe(true);
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, priority: PRIORITY.normal }).success).toBe(true);
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, priority: PRIORITY.low }).success).toBe(true);
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, priority: 0 }).success).toBe(false);
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, priority: 4 }).success).toBe(false);
+  });
+
+  it('should accept a draft when deadline is undefined or omitted', () => {
+    const withoutDeadline = {
+      typeId: draft.typeId,
+      priority: draft.priority,
+      sessionMinutes: draft.sessionMinutes,
+      topics: draft.topics,
+    };
+    expect(ConfirmDecompositionSchema.safeParse(withoutDeadline).success).toBe(true);
+    expect(ConfirmDecompositionSchema.safeParse({ ...draft, deadline: undefined }).success).toBe(
+      true,
+    );
   });
 
   it('should reject a draft when the work is more than 100 hours', () => {
