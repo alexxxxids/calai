@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "path": "/", "status": 200, "contains": "CalAI" },
+    { "path": "/login", "status": 200, "contains": "Zaloguj" },
+    { "path": "/calendar", "status": [307, 308], "location": "/login" },
+    { "method": "POST", "path": "/api/ai/decompose", "status": 401, "json": true },
+    { "method": "POST", "path": "/api/ai/timetable", "status": 401, "json": true }
+  ]
+}
