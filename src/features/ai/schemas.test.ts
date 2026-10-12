@@ -41,6 +41,25 @@ describe('TimetableSchema', () => {
 
     expect(TimetableSchema.safeParse(answer).success).toBe(false);
   });
+
+  it('should reject a lesson when endTime is earlier than or equal to startTime', () => {
+    const earlierEnd = {
+      events: [{ title: 'Matematyka', weekday: 1, startTime: '10:00', endTime: '09:00' }],
+      warnings: [],
+    };
+    const equalTimes = {
+      events: [{ title: 'Matematyka', weekday: 1, startTime: '10:00', endTime: '10:00' }],
+      warnings: [],
+    };
+    const valid = {
+      events: [{ title: 'Matematyka', weekday: 1, startTime: '09:00', endTime: '10:00' }],
+      warnings: [],
+    };
+
+    expect(TimetableSchema.safeParse(earlierEnd).success).toBe(false);
+    expect(TimetableSchema.safeParse(equalTimes).success).toBe(false);
+    expect(TimetableSchema.safeParse(valid).success).toBe(true);
+  });
 });
 
 describe('LocalDateTimeSchema', () => {

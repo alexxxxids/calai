@@ -37,12 +37,17 @@ export type Decomposition = z.infer<typeof DecompositionSchema>;
 export const TimetableSchema = z.object({
   events: z
     .array(
-      z.object({
-        title: z.string().min(1).max(EVENT_TITLE_MAX),
-        weekday: z.number().int().min(1).max(ISO_WEEKDAY_MAX),
-        startTime: z.string().regex(TIME_HH_MM),
-        endTime: z.string().regex(TIME_HH_MM),
-      }),
+      z
+        .object({
+          title: z.string().min(1).max(EVENT_TITLE_MAX),
+          weekday: z.number().int().min(1).max(ISO_WEEKDAY_MAX),
+          startTime: z.string().regex(TIME_HH_MM),
+          endTime: z.string().regex(TIME_HH_MM),
+        })
+        .refine(
+          (event) => event.endTime > event.startTime,
+          'Czas zakończenia musi być późniejszy niż rozpoczęcia.',
+        ),
     )
     .max(TIMETABLE_EVENTS_MAX_COUNT),
   warnings: z.array(z.string().max(MAX_WARNING_LENGTH)).max(MAX_WARNINGS_COUNT),

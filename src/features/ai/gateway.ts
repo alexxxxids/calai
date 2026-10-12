@@ -14,9 +14,15 @@ import { serverEnv } from '@/lib/env';
 // The ONLY door to Gemini (ADR-008): ESLint forbids importing @google/genai anywhere else.
 // Interactions API: one call = one interaction; store: false, so Google keeps no copy of it.
 
-/** A file for the model: its type and its bytes as base64. */
+/**
+ * A file for the model: its type and its bytes as base64.
+ *
+ * The `data` field must contain a raw base64 string without data: URI scheme prefix
+ * (e.g. without 'data:image/...;base64,' or 'data:application/pdf;base64,').
+ */
 export interface AiFile {
   readonly mimeType: AiMimeType;
+  /** Raw base64 string without data: URI scheme prefix. */
   readonly data: string;
 }
 

@@ -43,7 +43,7 @@ export interface DecomposePromptInput {
 export function decomposePrompt(input: DecomposePromptInput): string {
   return [
     `Today is ${input.today}.`,
-    `Task type: ${input.typeName ?? 'not given'}.`,
+    `Task type: ${input.typeName ? asData(input.typeName) : 'not given'}.`,
     `Deadline: ${input.deadline ?? 'none'}.`,
     `<description>${asData(input.description)}</description>`,
     'Decompose the attached material into topics with minutes of work.',

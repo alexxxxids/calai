@@ -31,7 +31,7 @@ describe('reasonFromError', () => {
 });
 
 describe('reasonFromInteraction', () => {
-  it('should give no reason when the interaction completed with text', () => {
+  it('should give no reason when the interaction completed with valid text', () => {
     expect(reasonFromInteraction('completed', '{"events":[]}')).toBeNull();
   });
 
@@ -39,13 +39,20 @@ describe('reasonFromInteraction', () => {
     expect(reasonFromInteraction('incomplete', '{"events":[')).toBe('blocked');
   });
 
-  it('should say blocked when a completed interaction has no text', () => {
+  it('should say blocked when a completed interaction has empty or whitespace text', () => {
     expect(reasonFromInteraction('completed', undefined)).toBe('blocked');
+    expect(reasonFromInteraction('completed', '')).toBe('blocked');
     expect(reasonFromInteraction('completed', '  ')).toBe('blocked');
+    expect(reasonFromInteraction('completed', '\n\t ')).toBe('blocked');
   });
 
-  it('should say unavailable when the interaction failed', () => {
+  it('should say unavailable when the interaction failed or is in a non-completed state', () => {
     expect(reasonFromInteraction('failed', undefined)).toBe('unavailable');
+    expect(reasonFromInteraction('budget_exceeded', undefined)).toBe('unavailable');
+    expect(reasonFromInteraction('cancelled', undefined)).toBe('unavailable');
+    expect(reasonFromInteraction('requires_action', undefined)).toBe('unavailable');
+    expect(reasonFromInteraction('in_progress', undefined)).toBe('unavailable');
+    expect(reasonFromInteraction('queued', undefined)).toBe('unavailable');
   });
 });
 
