@@ -4,7 +4,9 @@
 
 export const AI_UPLOAD_BUCKET = 'ai-uploads';
 
-const BYTES_PER_MEGABYTE = 1024 * 1024;
+const BYTES_PER_KIBIBYTE = 1024;
+const KIBIBYTES_PER_MEBIBYTE = 1024;
+const BYTES_PER_MEGABYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
 /** 20 MB, like the bucket's file_size_limit. */
 export const AI_MAX_FILE_MEGABYTES = 20;
 export const AI_MAX_FILE_BYTES = AI_MAX_FILE_MEGABYTES * BYTES_PER_MEGABYTE;

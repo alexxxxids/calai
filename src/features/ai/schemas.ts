@@ -1,24 +1,36 @@
 import * as z from 'zod';
-import { MAX_SESSION, MIN_SESSION, SLOT } from '@/domain/constants';
+import { MAX_SESSION, MIN_SESSION, PRIORITY, SLOT } from '@/domain/constants';
 
 // ── What the model must return (docs/algorithms.md §7) ─────────────────────────
 // The same schema becomes the JSON Schema sent to Gemini and the check of its answer.
 
 const TIME_HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+export const MAX_SUMMARY_LENGTH = 300;
+export const MAX_TOPIC_TITLE_LENGTH = 120;
+export const MIN_TOPIC_WORK_MINUTES_AI = 10;
+export const MAX_TOPIC_WORK_MINUTES = 600;
+export const MIN_TOPIC_WORK_MINUTES_DRAFT = 5;
+export const MAX_TOPICS_COUNT = 40;
+export const MAX_WARNING_LENGTH = 200;
+export const MAX_WARNINGS_COUNT = 5;
+export const ISO_WEEKDAY_MAX = 7;
+export const EVENT_TITLE_MAX = 80; // recurring_events.title in SQL
+export const TIMETABLE_EVENTS_MAX_COUNT = 80;
+
 export const DecompositionSchema = z.object({
-  summary: z.string().min(1).max(300),
-  sessionMinutes: z.number().int().min(30).max(180),
+  summary: z.string().min(1).max(MAX_SUMMARY_LENGTH),
+  sessionMinutes: z.number().int().min(MIN_SESSION).max(MAX_SESSION),
   topics: z
     .array(
       z.object({
-        title: z.string().min(1).max(120),
-        workMinutes: z.number().int().min(10).max(600),
+        title: z.string().min(1).max(MAX_TOPIC_TITLE_LENGTH),
+        workMinutes: z.number().int().min(MIN_TOPIC_WORK_MINUTES_AI).max(MAX_TOPIC_WORK_MINUTES),
       }),
     )
     .min(1)
-    .max(40),
-  warnings: z.array(z.string().max(200)).max(5),
+    .max(MAX_TOPICS_COUNT),
+  warnings: z.array(z.string().max(MAX_WARNING_LENGTH)).max(MAX_WARNINGS_COUNT),
 });
 export type Decomposition = z.infer<typeof DecompositionSchema>;
 
@@ -26,14 +38,14 @@ export const TimetableSchema = z.object({
   events: z
     .array(
       z.object({
-        title: z.string().min(1).max(80),
-        weekday: z.number().int().min(1).max(7),
+        title: z.string().min(1).max(EVENT_TITLE_MAX),
+        weekday: z.number().int().min(1).max(ISO_WEEKDAY_MAX),
         startTime: z.string().regex(TIME_HH_MM),
         endTime: z.string().regex(TIME_HH_MM),
       }),
     )
-    .max(80),
-  warnings: z.array(z.string().max(200)).max(5),
+    .max(TIMETABLE_EVENTS_MAX_COUNT),
+  warnings: z.array(z.string().max(MAX_WARNING_LENGTH)).max(MAX_WARNINGS_COUNT),
 });
 export type Timetable = z.infer<typeof TimetableSchema>;
 
@@ -90,15 +102,15 @@ const TopicTitleSchema = z
   .string()
   .trim()
   .min(1, 'Wpisz nazwę tematu.')
-  .max(120, 'Nazwa tematu może mieć maksymalnie 120 znaków.');
+  .max(MAX_TOPIC_TITLE_LENGTH, `Nazwa tematu może mieć maksymalnie ${MAX_TOPIC_TITLE_LENGTH} znaków.`);
 
 export const TopicSchema = z.object({
   title: TopicTitleSchema,
   workMinutes: z
     .number({ error: 'Wpisz liczbę minut.' })
     .int('Wpisz pełne minuty.')
-    .min(5, 'Temat to co najmniej 5 minut.')
-    .max(600, 'Temat to najwyżej 600 minut — podziel go na mniejsze.'),
+    .min(MIN_TOPIC_WORK_MINUTES_DRAFT, 'Temat to co najmniej 5 minut.')
+    .max(MAX_TOPIC_WORK_MINUTES, 'Temat to najwyżej 600 minut — podziel go na mniejsze.'),
 });
 export type Topic = z.infer<typeof TopicSchema>;
 
@@ -118,8 +130,6 @@ export const DecompositionDraftSchema = z.object({
 });
 export type DecompositionDraft = z.infer<typeof DecompositionDraftSchema>;
 
-const EVENT_TITLE_MAX = 80; // recurring_events.title in SQL
-
 export const TimetableEventSchema = z
   .object({
     title: z
@@ -127,7 +137,7 @@ export const TimetableEventSchema = z
       .trim()
       .min(1, 'Wpisz nazwę zajęć.')
       .max(EVENT_TITLE_MAX, `Nazwa może mieć maksymalnie ${EVENT_TITLE_MAX} znaków.`),
-    weekday: z.number().int().min(1).max(7),
+    weekday: z.number().int().min(1).max(ISO_WEEKDAY_MAX),
     startTime: LocalTimeSchema,
     endTime: LocalTimeSchema,
   })
@@ -151,10 +161,10 @@ export type TimetableDraft = z.infer<typeof TimetableDraftSchema>;
 export const ConfirmDecompositionSchema = z
   .object({
     typeId: TypeIdSchema,
-    priority: z.union([z.literal(1), z.literal(2), z.literal(3)], { error: 'Wybierz priorytet.' }),
+    priority: z.union([z.literal(1), z.literal(2), z.literal(PRIORITY.low)], { error: 'Wybierz priorytet.' }),
     deadline: LocalDateTimeSchema.nullable(),
     sessionMinutes: SessionMinutesSchema,
-    topics: z.array(TopicSchema).min(1, 'Zostaw co najmniej jeden temat.').max(40),
+    topics: z.array(TopicSchema).min(1, 'Zostaw co najmniej jeden temat.').max(MAX_TOPICS_COUNT),
   })
   .refine((draft) => totalWorkMinutes(draft.topics) <= MAX_ESTIMATE_MINUTES, {
     path: ['topics'],
@@ -167,7 +177,7 @@ export const ConfirmTimetableSchema = z
     typeId: TypeIdSchema,
     validFrom: LocalDateSchema,
     validUntil: LocalDateSchema,
-    events: z.array(TimetableEventSchema).min(1, 'Zostaw co najmniej jedne zajęcia.').max(80),
+    events: z.array(TimetableEventSchema).min(1, 'Zostaw co najmniej jedne zajęcia.').max(TIMETABLE_EVENTS_MAX_COUNT),
   })
   .refine((draft) => draft.validUntil >= draft.validFrom, {
     path: ['validUntil'],

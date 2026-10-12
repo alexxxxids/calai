@@ -20,6 +20,7 @@ const DAYS_PER_WEEK = 7;
 const FRIDAY = 5;
 /** Polish schools end classes on the first Friday after 20 June (the rule of the Ministry). */
 const SCHOOL_YEAR_END_SEARCH_FROM = '06-21';
+const ISO_YEAR_STRING_LENGTH = 4;
 
 /** Σ of the topics' minutes rounded to 5: the task's estimate_minutes. */
 export function estimateFromTopics(topics: readonly Topic[]): number {
@@ -77,7 +78,7 @@ export function nearestMonday(date: LocalDate): LocalDate {
  * Examples: '2026-09-28' → '2027-06-25', '2027-06-26' → '2028-06-23'.
  */
 export function schoolYearEnd(date: LocalDate): LocalDate {
-  const year = Number(date.slice(0, 4));
+  const year = Number(date.slice(0, ISO_YEAR_STRING_LENGTH));
   const thisYearEnd = firstFridayFrom(`${year}-${SCHOOL_YEAR_END_SEARCH_FROM}`);
   return date <= thisYearEnd ? thisYearEnd : firstFridayFrom(`${year + 1}-${SCHOOL_YEAR_END_SEARCH_FROM}`);
 }
