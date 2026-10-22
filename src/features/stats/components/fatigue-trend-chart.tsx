@@ -65,9 +65,12 @@ function CustomFatigueTooltip({ active, payload, label }: CustomTooltipProps) {
     return null;
   }
 
+  const rawLabel = String(label ?? '');
+  const displayLabel = rawLabel.length >= DATE_SUBSTRING_START ? formatWeekLabel(rawLabel) : rawLabel;
+
   return (
     <div className="grid min-w-36 gap-1.5 rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-      <p className="font-semibold text-foreground">Tydzień: {String(label)}</p>
+      <p className="font-semibold text-foreground">Tydzień: {displayLabel}</p>
       {payload.map((entry, index) => {
         const val = typeof entry.value === 'number' ? entry.value : 0;
         const name = entry.dataKey === 'fatigue' ? 'Zmęczenie' : 'Stres';
@@ -116,31 +119,29 @@ function EmptyTrendNotice() {
   );
 }
 
-interface FormattedTrendPoint extends FatigueTrendItem {
-  readonly formattedWeek: string;
-}
-
 function FatigueTrendLineChart({
-  chartData,
+  items,
 }: {
-  readonly chartData: readonly FormattedTrendPoint[];
+  readonly items: readonly FatigueTrendItem[];
 }) {
   return (
     <ChartContainer
+      role="img"
       config={chartConfig}
       className="aspect-auto h-[240px] w-full"
       aria-label="Wykres liniowy zmęczenia i stresu w kolejnych tygodniach"
     >
       <LineChart
-        data={[...chartData]}
+        data={[...items]}
         margin={{ top: 12, right: 16, left: 0, bottom: 8 }}
       >
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
-          dataKey="formattedWeek"
+          dataKey="weekStart"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
+          tickFormatter={formatWeekLabel}
           tick={{ fontSize: 11 }}
         />
         <YAxis
@@ -178,11 +179,6 @@ export function FatigueTrendChart({ items, reflectionLevel }: FatigueTrendChartP
   const isBasicLevel = reflectionLevel === 'basic';
   const hasData = items.length > 0;
 
-  const chartData: FormattedTrendPoint[] = items.map((item) => ({
-    ...item,
-    formattedWeek: formatWeekLabel(item.weekStart),
-  }));
-
   return (
     <Card className="flex flex-col">
       <CardHeader>
@@ -197,7 +193,7 @@ export function FatigueTrendChart({ items, reflectionLevel }: FatigueTrendChartP
         ) : !hasData ? (
           <EmptyTrendNotice />
         ) : (
-          <FatigueTrendLineChart chartData={chartData} />
+          <FatigueTrendLineChart items={items} />
         )}
       </CardContent>
     </Card>

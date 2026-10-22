@@ -35,7 +35,7 @@ export function PeriodSelector({ currentRange }: PeriodSelectorProps) {
             variant={isSelected ? 'default' : 'ghost'}
             size="sm"
             className="text-xs"
-            aria-pressed={isSelected}
+            aria-current={isSelected ? 'page' : undefined}
           >
             <Link href={`/stats?range=${option.value}`} replace>
               {option.label}

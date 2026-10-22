@@ -87,11 +87,6 @@ function CustomDailyLoadTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 export function DailyLoadChart({ items, limit }: DailyLoadChartProps) {
-  const chartData = items.map((item) => ({
-    ...item,
-    formattedDate: formatDateLabel(item.date),
-  }));
-
   return (
     <Card className="flex flex-col">
       <CardHeader>
@@ -102,23 +97,26 @@ export function DailyLoadChart({ items, limit }: DailyLoadChartProps) {
       </CardHeader>
       <CardContent className="flex-1">
         <ChartContainer
+          role="img"
           config={chartConfig}
           className="aspect-auto h-[260px] w-full"
           aria-label="Wykres obciążenia dziennego z linią limitu"
         >
           <BarChart
-            data={chartData}
+            data={[...items]}
             margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
           >
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
-              dataKey="formattedDate"
+              dataKey="date"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              tickFormatter={formatDateLabel}
               tick={{ fontSize: 11 }}
             />
             <YAxis
+              domain={[0, (dataMax: number) => Math.max(dataMax, limit)]}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -127,6 +125,7 @@ export function DailyLoadChart({ items, limit }: DailyLoadChartProps) {
             <ChartTooltip content={<CustomDailyLoadTooltip />} />
             <ReferenceLine
               y={limit}
+              ifOverflow="extendDomain"
               stroke="var(--destructive)"
               strokeDasharray="4 4"
               label={{

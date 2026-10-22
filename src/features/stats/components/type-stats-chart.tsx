@@ -17,6 +17,8 @@ interface TypeStatsChartProps {
 }
 
 const BAR_CORNER_RADIUS = 4;
+const MAX_TICK_LABEL_LENGTH = 14;
+const TICK_LABEL_TRUNCATE_END = 13;
 
 const chartConfig = {
   plannedMinutes: {
@@ -33,11 +35,18 @@ function formatAxisMinutes(minutes: number): string {
   if (minutes === 0) {
     return '0';
   }
-  if (minutes >= MINUTES_PER_HOUR) {
-    const hours = Math.round(minutes / MINUTES_PER_HOUR);
-    return `${hours} h`;
+  if (minutes < MINUTES_PER_HOUR) {
+    return `${minutes} min`;
   }
-  return `${minutes} min`;
+  const hours = minutes / MINUTES_PER_HOUR;
+  return Number.isInteger(hours) ? `${hours} h` : `${hours.toFixed(1)} h`;
+}
+
+function formatTypeNameTick(name: string): string {
+  if (name.length > MAX_TICK_LABEL_LENGTH) {
+    return `${name.slice(0, TICK_LABEL_TRUNCATE_END)}…`;
+  }
+  return name;
 }
 
 interface TooltipPayloadEntry {
@@ -62,7 +71,8 @@ function CustomTypeStatsTooltip({ active, payload, label }: CustomTooltipProps) 
     <div className="grid min-w-36 gap-1.5 rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
       <p className="font-semibold text-foreground">{String(label)}</p>
       {payload.map((entry, index) => {
-        const val = typeof entry.value === 'number' ? entry.value : 0;
+        const rawVal = typeof entry.value === 'number' ? entry.value : 0;
+        const val = rawVal >= 0 ? rawVal : 0;
         const formatted = formatMinutes(val);
         const name = entry.dataKey === 'plannedMinutes' ? 'Plan' : 'Wykonanie';
         const color = entry.color ?? (entry.dataKey === 'plannedMinutes' ? 'var(--chart-1)' : 'var(--chart-2)');
@@ -85,7 +95,9 @@ function CustomTypeStatsTooltip({ active, payload, label }: CustomTooltipProps) 
 }
 
 export function TypeStatsChart({ items }: TypeStatsChartProps) {
-  const hasData = items.length > 0;
+  const hasData =
+    items.length > 0 &&
+    items.some((item) => item.plannedMinutes > 0 || item.actualMinutes > 0);
 
   return (
     <Card className="flex flex-col">
@@ -98,6 +110,7 @@ export function TypeStatsChart({ items }: TypeStatsChartProps) {
       <CardContent className="flex-1">
         {hasData ? (
           <ChartContainer
+            role="img"
             config={chartConfig}
             className="aspect-auto h-[280px] w-full"
             aria-label="Wykres słupkowy czasu planowanego i zrealizowanego według typów zadań"
@@ -113,6 +126,7 @@ export function TypeStatsChart({ items }: TypeStatsChartProps) {
                 axisLine={false}
                 tickMargin={8}
                 interval={0}
+                tickFormatter={formatTypeNameTick}
                 tick={{ fontSize: 11 }}
               />
               <YAxis
