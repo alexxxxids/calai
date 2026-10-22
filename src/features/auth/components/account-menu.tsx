@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/features/auth/actions';
+import { forgetThisBrowserPush } from '@/features/notifications/client';
 
 /** The account button in the app header: who is signed in, settings, sign-out. */
 export function AccountMenu({ email }: { email: string | null }) {
@@ -21,6 +22,7 @@ export function AccountMenu({ email }: { email: string | null }) {
 
   function handleSignOut() {
     startTransition(async () => {
+      await forgetThisBrowserPush();
       const result = await signOut();
       // Reached only when signing out failed: on success the action redirects to /login.
       if (!result.ok) {
