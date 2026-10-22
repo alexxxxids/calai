@@ -27,6 +27,7 @@ import type { UserExportData } from '../export-data';
 
 const ISO_DATE_LENGTH = 10;
 const JSON_INDENT = 2;
+const REVOKE_TIMEOUT_MS = 1000;
 
 function downloadJsonFile(data: UserExportData): void {
   const json = JSON.stringify(data, null, JSON_INDENT);
@@ -38,7 +39,9 @@ function downloadJsonFile(data: UserExportData): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, REVOKE_TIMEOUT_MS);
 }
 
 export function ExportDataCard() {

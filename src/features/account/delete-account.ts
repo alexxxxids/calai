@@ -49,7 +49,10 @@ export async function deleteAccount(
   }
 
   try {
-    await supabase.auth.signOut({ scope: 'local' });
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+    if (signOutError) {
+      console.error('[deleteAccount] Local signOut failed after user deletion:', signOutError);
+    }
   } catch (err) {
     console.error('[deleteAccount] Local signOut failed after user deletion:', err);
   }
