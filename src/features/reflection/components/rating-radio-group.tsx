@@ -21,6 +21,22 @@ const RATING_OPTIONS = Array.from(
   (_, i) => MIN_RATING_SCORE + i,
 );
 
+function getNextScore(current: number, key: string): number | null {
+  if (key === 'ArrowRight' || key === 'ArrowDown') {
+    return current < MAX_RATING_SCORE ? current + 1 : MIN_RATING_SCORE;
+  }
+  if (key === 'ArrowLeft' || key === 'ArrowUp') {
+    return current > MIN_RATING_SCORE ? current - 1 : MAX_RATING_SCORE;
+  }
+  if (key === 'Home') {
+    return MIN_RATING_SCORE;
+  }
+  if (key === 'End') {
+    return MAX_RATING_SCORE;
+  }
+  return null;
+}
+
 export function RatingRadioGroup({
   label,
   description,
@@ -32,6 +48,17 @@ export function RatingRadioGroup({
   disabled = false,
 }: RatingRadioGroupProps) {
   const groupId = useId();
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    const next = getNextScore(value, e.key);
+    if (next !== null) {
+      e.preventDefault();
+      onChange(next);
+      const targetBtn = document.getElementById(`${groupId}-opt-${next}`);
+      targetBtn?.focus();
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -58,12 +85,15 @@ export function RatingRadioGroup({
             return (
               <button
                 key={score}
+                id={`${groupId}-opt-${score}`}
                 type="button"
                 role="radio"
                 name={name}
                 aria-checked={isSelected}
+                tabIndex={isSelected ? 0 : -1}
                 disabled={disabled}
                 onClick={() => onChange(score)}
+                onKeyDown={handleKeyDown}
                 className={cn(
                   'flex h-11 items-center justify-center rounded-lg border text-sm font-semibold transition-all',
                   'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

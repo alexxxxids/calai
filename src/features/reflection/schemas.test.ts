@@ -155,6 +155,8 @@ describe('features/reflection/schemas', () => {
       expect(MonthlyReflectionSchema.safeParse({ month: '2026-10-15' }).success).toBe(false);
       expect(MonthlyReflectionSchema.safeParse({ month: '2026-10' }).success).toBe(false);
       expect(MonthlyReflectionSchema.safeParse({ month: 'invalid' }).success).toBe(false);
+      expect(MonthlyReflectionSchema.safeParse({ month: '2026-00-01' }).success).toBe(false);
+      expect(MonthlyReflectionSchema.safeParse({ month: '2026-13-01' }).success).toBe(false);
     });
 
     it('should reject text fields exceeding 4000 characters', () => {

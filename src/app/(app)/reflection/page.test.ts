@@ -115,7 +115,7 @@ describe('ReflectionPage rendering and auth flow', () => {
 
     expect(requireUser).toHaveBeenCalledTimes(1);
     expect(getProfile).toHaveBeenCalledWith(mockSupabase, mockUser.id);
-    expect(getReflectionState).toHaveBeenCalledWith(mockSupabase, mockUser.id);
+    expect(getReflectionState).toHaveBeenCalledWith(mockSupabase, mockUser.id, undefined, profile);
 
     expect(html).toContain('Refleksja');
     expect(html).toContain('Tygodniowa samoocena samopoczucia');

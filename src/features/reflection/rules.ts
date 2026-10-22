@@ -7,7 +7,7 @@ import {
   zonedToInstant,
 } from '@/domain/time';
 
-const MONTH_PATTERN = /^(\d{4})-(\d{2})-01$/;
+const MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])-01$/;
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DECEMBER = 12;
 const JANUARY = 1;
@@ -120,14 +120,16 @@ export function getPreviousMonthStart(monthStart: string): string {
 }
 
 /**
- * Verifies that the month input is a valid YYYY-MM-01 date and not in the future.
+ * Verifies that the month input is a valid YYYY-MM-01 date and strictly
+ * either the current or previous month in the user's timezone (FR-101).
  */
 export function isAllowedMonth(monthInput: string, now: Date, timeZone: string): boolean {
   if (!MONTH_PATTERN.test(monthInput)) {
     return false;
   }
   const currentMonth = getCurrentMonthStart(now, timeZone);
-  return monthInput <= currentMonth;
+  const previousMonth = getPreviousMonthStart(currentMonth);
+  return monthInput === currentMonth || monthInput === previousMonth;
 }
 
 /**

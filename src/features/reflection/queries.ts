@@ -1,6 +1,6 @@
 import 'server-only';
 import type { ServerSupabase } from '@/lib/supabase/server';
-import { getProfile } from '@/features/profile/queries';
+import { getProfile, type ProfileRow } from '@/features/profile/queries';
 import {
   aggregateTypeStats,
   canAccessMonthlyReflection,
@@ -10,7 +10,6 @@ import {
   getMonthInterval,
   getPreviousMonthStart,
   getPreviousWeekStart,
-  type TypeStatsRow,
 } from './rules';
 import type {
   MonthlyReflectionState,
@@ -68,7 +67,7 @@ async function loadMonthlyTypeStats(
     throw result.error;
   }
 
-  return aggregateTypeStats((result.data ?? []) as unknown as readonly TypeStatsRow[]);
+  return aggregateTypeStats(result.data ?? []);
 }
 
 async function loadMonthlyState(params: MonthlyStateParams): Promise<MonthlyReflectionState> {
@@ -104,13 +103,16 @@ async function loadMonthlyState(params: MonthlyStateParams): Promise<MonthlyRefl
 
 /**
  * Loads user reflection state for the current and previous periods.
+ * An optional cachedProfile parameter avoids duplicate database queries when
+ * the profile has already been retrieved by the caller (e.g. in Server Components).
  */
 export async function getReflectionState(
   supabase: ServerSupabase,
   userId: string,
   now = new Date(),
+  profile?: ProfileRow,
 ): Promise<ReflectionState> {
-  const profileRow = await getProfile(supabase, userId);
+  const profileRow = profile ?? (await getProfile(supabase, userId));
   if (!profileRow) {
     throw new Error('Nie znaleziono profilu użytkownika.');
   }

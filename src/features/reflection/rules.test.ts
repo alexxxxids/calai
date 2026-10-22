@@ -66,14 +66,27 @@ describe('features/reflection/rules', () => {
       expect(getPreviousMonthStart('2027-01-01')).toBe('2026-12-01');
     });
 
-    it('should validate allowed months (cannot submit future month)', () => {
+    it('should validate allowed months strictly (FR-101: current or previous month only)', () => {
       const now = new Date('2026-10-15T14:30:00Z');
 
+      // Current month and previous month allowed
       expect(isAllowedMonth('2026-10-01', now, warsaw)).toBe(true);
       expect(isAllowedMonth('2026-09-01', now, warsaw)).toBe(true);
+
+      // Future month forbidden
       expect(isAllowedMonth('2026-11-01', now, warsaw)).toBe(false);
+
+      // Older month (2 months ago or older) forbidden (FR-101)
+      expect(isAllowedMonth('2026-08-01', now, warsaw)).toBe(false);
+      expect(isAllowedMonth('2025-01-01', now, warsaw)).toBe(false);
+
+      // Invalid format or day not 01 forbidden
       expect(isAllowedMonth('2026-10-15', now, warsaw)).toBe(false);
       expect(isAllowedMonth('invalid', now, warsaw)).toBe(false);
+
+      // Invalid month numbers 00 and 13-99 forbidden (H-3)
+      expect(isAllowedMonth('2026-00-01', now, warsaw)).toBe(false);
+      expect(isAllowedMonth('2026-13-01', now, warsaw)).toBe(false);
     });
 
     it('should throw when getNextMonthStart or getPreviousMonthStart receives invalid format', () => {

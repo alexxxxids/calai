@@ -19,7 +19,7 @@ export default async function ReflectionPage() {
     redirect('/onboarding');
   }
 
-  const state = await getReflectionState(supabase, user.id);
+  const state = await getReflectionState(supabase, user.id, undefined, profile);
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8 space-y-6">

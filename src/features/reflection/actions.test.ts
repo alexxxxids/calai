@@ -226,6 +226,8 @@ describe('features/reflection/actions', () => {
         if (!result.ok) {
           expect(result.error).toBe('Plan się zmienił, spróbuj ponownie');
         }
+        expect(revalidatePath).toHaveBeenCalledWith('/reflection');
+        expect(revalidatePath).not.toHaveBeenCalledWith('/calendar');
       } finally {
         vi.useRealTimers();
       }
@@ -274,6 +276,16 @@ describe('features/reflection/actions', () => {
         expect(result.ok).toBe(false);
         if (!result.ok) {
           expect(result.error).toBe('Nieprawidłowy miesiąc.');
+        }
+
+        const oldMonthResult = await saveMonthlyReflection({
+          month: '2026-08-01',
+          wentWell: 'Stary miesiąc',
+        });
+
+        expect(oldMonthResult.ok).toBe(false);
+        if (!oldMonthResult.ok) {
+          expect(oldMonthResult.error).toBe('Nieprawidłowy miesiąc.');
         }
       } finally {
         vi.useRealTimers();

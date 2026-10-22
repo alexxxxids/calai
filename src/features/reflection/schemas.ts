@@ -6,7 +6,7 @@ export const MAX_WEEKLY_NOTE_LENGTH = 1000;
 export const MAX_MONTHLY_TEXT_LENGTH = 4000;
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const MONTH_REGEX = /^\d{4}-\d{2}-01$/;
+const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])-01$/;
 
 function optionalNullableText(maxLength: number, tooLongMessage: string) {
   return z
@@ -58,7 +58,7 @@ export const MonthlyReflectionSchema = z.object({
   ),
   wentBadly: optionalNullableText(
     MAX_MONTHLY_TEXT_LENGTH,
-    `Pole "Co poszło źle" nie может przekraczać ${MAX_MONTHLY_TEXT_LENGTH} znaków`,
+    `Pole "Co poszło źle" nie może przekraczać ${MAX_MONTHLY_TEXT_LENGTH} znaków`,
   ),
   typesReview: optionalNullableText(
     MAX_MONTHLY_TEXT_LENGTH,

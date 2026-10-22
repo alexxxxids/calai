@@ -3,8 +3,8 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { createClient, type ServerSupabase } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth';
-import { getProfile } from '@/features/profile/queries';
+import { getCurrentUser, type CurrentUser } from '@/lib/auth';
+import { getProfile, type ProfileRow } from '@/features/profile/queries';
 import { replanForUser } from '@/features/planner';
 import {
   type ActionResult,
@@ -30,19 +30,31 @@ import {
 const CALENDAR_PATH = '/calendar';
 const REFLECTION_PATH = '/reflection';
 
-async function getVerifiedContext() {
+type VerifiedContextResult =
+  | {
+      readonly ok: true;
+      readonly supabase: ServerSupabase;
+      readonly user: CurrentUser;
+      readonly profile: ProfileRow;
+    }
+  | {
+      readonly ok: false;
+      readonly errorResult: ActionResult<never>;
+    };
+
+async function getVerifiedContext(): Promise<VerifiedContextResult> {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
   if (!user) {
-    return { errorResult: unauthorized() };
+    return { ok: false, errorResult: unauthorized() };
   }
 
   const profile = await getProfile(supabase, user.id);
   if (!profile) {
-    return { errorResult: fail('Nie znaleziono profilu użytkownika.') };
+    return { ok: false, errorResult: fail('Nie znaleziono profilu użytkownika.') };
   }
 
-  return { supabase, user, profile };
+  return { ok: true, supabase, user, profile };
 }
 
 async function triggerPlannerReplan(
@@ -95,8 +107,8 @@ export async function saveWeeklyReflection(
 
   try {
     const context = await getVerifiedContext();
-    if ('errorResult' in context) {
-      return context.errorResult as ActionResult<{ weekStart: string }>;
+    if (!context.ok) {
+      return context.errorResult;
     }
     const { supabase, user, profile } = context;
 
@@ -114,12 +126,13 @@ export async function saveWeeklyReflection(
       return unexpected('saveWeeklyReflection:upsert', upsertError);
     }
 
+    revalidatePath(REFLECTION_PATH);
+
     const replanErrorResult = await triggerPlannerReplan(supabase, user.id, now);
     if (replanErrorResult) {
       return replanErrorResult;
     }
 
-    revalidatePath(REFLECTION_PATH);
     revalidatePath(CALENDAR_PATH);
     return ok({ weekStart: parsed.data.weekStart });
   } catch (err) {
@@ -158,8 +171,8 @@ export async function saveMonthlyReflection(
 
   try {
     const context = await getVerifiedContext();
-    if ('errorResult' in context) {
-      return context.errorResult as ActionResult<{ month: string }>;
+    if (!context.ok) {
+      return context.errorResult;
     }
     const { supabase, profile } = context;
 

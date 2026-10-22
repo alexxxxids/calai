@@ -37,6 +37,8 @@ describe('features/reflection/components/rating-radio-group', () => {
     expect(html).toContain('5: Wyczerpany');
     expect(html).toContain('role="radiogroup"');
     expect(html).toContain('aria-checked="true"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('tabindex="-1"');
   });
 });
 
