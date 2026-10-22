@@ -1,14 +1,25 @@
+import 'server-only';
 import type { Metadata } from 'next';
+import { requireUser } from '@/lib/auth';
+import { StatsView } from '@/features/stats/components/stats-view';
+import { getStatsOverview } from '@/features/stats/queries';
+import { parseStatsRange } from '@/features/stats/schemas';
 
 export const metadata: Metadata = {
   title: 'Statystyki',
+  description: 'Wykresy i zestawienia realizacji zadań, obciążenia oraz trendów samopoczucia.',
 };
 
-export default function StatsPage() {
-  return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-foreground">Statystyki</h1>
-      <p className="mt-2 text-muted-foreground">Wkrótce.</p>
-    </main>
-  );
+interface StatsPageProps {
+  readonly searchParams: Promise<{ readonly range?: string }>;
+}
+
+export default async function StatsPage({ searchParams }: StatsPageProps) {
+  const { supabase, user } = await requireUser();
+  const params = await searchParams;
+  const range = parseStatsRange(params?.range);
+
+  const data = await getStatsOverview(supabase, user.id, range);
+
+  return <StatsView initialData={data} />;
 }
