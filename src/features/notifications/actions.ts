@@ -74,3 +74,34 @@ export async function unsubscribePush(
 
   return ok({ success: true });
 }
+
+/**
+ * Checks whether the current signed-in user owns the push subscription on this endpoint.
+ * Prevents account confusion on shared school lab computers (H-2).
+ */
+export async function isCurrentDeviceSubscribed(
+  input: unknown,
+): Promise<ActionResult<{ subscribed: boolean }>> {
+  const parsed = UnsubscribePushSchema.safeParse(input);
+  if (!parsed.success) {
+    return ok({ subscribed: false });
+  }
+
+  const supabase = await createClient();
+  const user = await getCurrentUser(supabase);
+  if (!user) {
+    return unauthorized();
+  }
+
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('id')
+    .eq('endpoint', parsed.data.endpoint)
+    .maybeSingle();
+
+  if (error) {
+    return unexpected('isCurrentDeviceSubscribed', error);
+  }
+
+  return ok({ subscribed: data !== null });
+}

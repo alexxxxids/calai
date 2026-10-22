@@ -12,6 +12,7 @@ const PUBLIC_PAGES = [
   '/verify',
   '/forgot-password',
   '/reset-password',
+  '/manifest.webmanifest',
 ];
 
 /**

@@ -1,4 +1,4 @@
-import { MINUTES_PER_HOUR, MS_PER_MINUTE } from '@/domain/constants';
+import { HOURS_PER_DAY, MINUTES_PER_HOUR, MS_PER_MINUTE } from '@/domain/constants';
 import { instantToLocalDate, instantToLocalTime, isoWeekday } from '@/domain/time';
 import type { Instant, LocalTime } from '@/domain/types';
 
@@ -11,6 +11,7 @@ export const SUNDAY_REFLECTION_HOUR = 19;
 const UPCOMING_WINDOW_START_MS = UPCOMING_WINDOW_START_MINUTES * MS_PER_MINUTE;
 const UPCOMING_WINDOW_END_MS = UPCOMING_WINDOW_END_MINUTES * MS_PER_MINUTE;
 const SUNDAY_TARGET_START_MINUTES = SUNDAY_REFLECTION_HOUR * MINUTES_PER_HOUR;
+const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
 
 /**
  * Checks whether a block's start instant falls in the semi-open interval [now + 5m, now + 15m).
@@ -31,13 +32,15 @@ function parseTimeToDayMinutes(timeStr: LocalTime): number {
 
 /**
  * Checks if current instant matches user's local end-of-day window [dayEnd, dayEnd + 5m).
+ * Uses modulo arithmetic across day boundaries to correctly handle day_end near midnight (e.g. 23:58).
  */
 export function isEndOfDayWindow(nowMs: Instant, timezone: string, dayEnd: LocalTime): boolean {
   const localTime = instantToLocalTime(nowMs, timezone);
   const curMinutes = parseTimeToDayMinutes(localTime);
   const endMinutes = parseTimeToDayMinutes(dayEnd);
+  const diffMinutes = (curMinutes - endMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
 
-  return curMinutes >= endMinutes && curMinutes < endMinutes + CRON_INTERVAL_MINUTES;
+  return diffMinutes < CRON_INTERVAL_MINUTES;
 }
 
 /**

@@ -6,8 +6,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static files, images and the service worker.
+  // Everything except static files, images, manifest and the service worker.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)',
   ],
 };

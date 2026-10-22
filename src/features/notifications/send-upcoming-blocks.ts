@@ -68,6 +68,26 @@ async function deliverBlocks(
   return sentCount;
 }
 
+function mapUserTimezones(profiles: ReadonlyArray<{ id: string; timezone: string }>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const p of profiles) {
+    map.set(p.id, p.timezone);
+  }
+  return map;
+}
+
+function mapUserSubscriptions(
+  subs: ReadonlyArray<PushSubscriptionRecord>,
+): Map<string, PushSubscriptionRecord[]> {
+  const map = new Map<string, PushSubscriptionRecord[]>();
+  for (const sub of subs) {
+    const list = map.get(sub.user_id) ?? [];
+    list.push(sub);
+    map.set(sub.user_id, list);
+  }
+  return map;
+}
+
 /**
  * Finds blocks starting in [now + 5m, now + 15m), sends notifications,
  * and sets notified_at = now on all processed blocks in batch.
@@ -87,23 +107,28 @@ export async function sendUpcomingBlocks(admin: NotificationAdmin, now: Date): P
       .in('user_id', userIds),
   ]);
 
-  const userTimezones = new Map<string, string>();
-  for (const p of profilesRes.data ?? []) {
-    userTimezones.set(p.id, p.timezone);
+  if (profilesRes.error || subsRes.error) {
+    console.error(
+      '[send-upcoming-blocks] Database error fetching profiles or subscriptions, skipping stamp:',
+      profilesRes.error ?? subsRes.error,
+    );
+    return 0;
   }
 
-  const userSubs = new Map<string, PushSubscriptionRecord[]>();
-  for (const sub of subsRes.data ?? []) {
-    const list = userSubs.get(sub.user_id) ?? [];
-    list.push(sub);
-    userSubs.set(sub.user_id, list);
-  }
-
+  const userTimezones = mapUserTimezones(profilesRes.data ?? []);
+  const userSubs = mapUserSubscriptions(subsRes.data ?? []);
   const sentCount = await deliverBlocks(admin, blocks, userTimezones, userSubs);
 
-  // Crucial H-1: Stamp notified_at on all found blocks regardless of subscription count
+  // Crucial H-1: Stamp notified_at on all successfully retrieved blocks
   const blockIds = blocks.map((b) => b.id);
-  await admin.from('blocks').update({ notified_at: now.toISOString() }).in('id', blockIds);
+  const { error: updateError } = await admin
+    .from('blocks')
+    .update({ notified_at: now.toISOString() })
+    .in('id', blockIds);
+
+  if (updateError) {
+    console.error('[send-upcoming-blocks] Failed to stamp notified_at on blocks:', updateError);
+  }
 
   return sentCount;
 }

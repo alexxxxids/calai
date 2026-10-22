@@ -43,7 +43,8 @@ async function hasWeeklyReflection(
 
   if (error) {
     console.error('[send-sunday-reminders] Error querying weekly reflections:', error);
-    return false;
+    // Safe fallback (H-5): treat as filled to avoid spamming the user on database error
+    return true;
   }
 
   return data !== null;

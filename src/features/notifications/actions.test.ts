@@ -10,7 +10,7 @@ vi.mock('@/lib/auth', () => ({
 
 import { getCurrentUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { subscribePush, unsubscribePush } from './actions';
+import { isCurrentDeviceSubscribed, subscribePush, unsubscribePush } from './actions';
 
 describe('notifications actions', () => {
   const mockUser = { id: 'user-uuid-1', email: 'test@example.com' };
@@ -156,6 +156,80 @@ describe('notifications actions', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBe('Coś poszło nie tak. Spróbuj ponownie za chwilę.');
+      }
+    });
+  });
+
+  describe('isCurrentDeviceSubscribed', () => {
+    it('returns false when endpoint schema is invalid', async () => {
+      const result = await isCurrentDeviceSubscribed({ endpoint: 'invalid-url' });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.subscribed).toBe(false);
+      }
+    });
+
+    it('returns unauthorized when no user is signed in', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue(null);
+
+      const result = await isCurrentDeviceSubscribed({
+        endpoint: 'https://push.example.com/sub/123',
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe('Sesja wygasła. Zaloguj się ponownie.');
+      }
+    });
+
+    it('returns subscribed: true when endpoint is owned by user', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue(mockUser as never);
+
+      const maybeSingleMock = vi.fn().mockResolvedValue({
+        data: { id: 'sub-1' },
+        error: null,
+      });
+      const eqMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+      const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
+      const fromMock = vi.fn().mockReturnValue({ select: selectMock });
+
+      vi.mocked(createClient).mockResolvedValue({
+        from: fromMock,
+      } as never);
+
+      const result = await isCurrentDeviceSubscribed({
+        endpoint: 'https://push.example.com/sub/123',
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.subscribed).toBe(true);
+      }
+      expect(eqMock).toHaveBeenCalledWith('endpoint', 'https://push.example.com/sub/123');
+    });
+
+    it('returns subscribed: false when endpoint is not in database', async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue(mockUser as never);
+
+      const maybeSingleMock = vi.fn().mockResolvedValue({
+        data: null,
+        error: null,
+      });
+      const eqMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+      const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
+      const fromMock = vi.fn().mockReturnValue({ select: selectMock });
+
+      vi.mocked(createClient).mockResolvedValue({
+        from: fromMock,
+      } as never);
+
+      const result = await isCurrentDeviceSubscribed({
+        endpoint: 'https://push.example.com/sub/123',
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.subscribed).toBe(false);
       }
     });
   });

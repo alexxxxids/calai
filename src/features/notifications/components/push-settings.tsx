@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { isCurrentDeviceSubscribed } from '../actions';
 import {
   getBrowserPushSubscription,
   isPushSupported,
@@ -80,9 +81,17 @@ export function PushSettings() {
   useEffect(() => {
     let isMounted = true;
     if (isPushSupported()) {
-      void getBrowserPushSubscription().then((sub) => {
+      void getBrowserPushSubscription().then(async (sub) => {
+        if (!isMounted) {
+          return;
+        }
+        if (!sub) {
+          setIsSubscribed(false);
+          return;
+        }
+        const check = await isCurrentDeviceSubscribed({ endpoint: sub.endpoint });
         if (isMounted) {
-          setIsSubscribed(sub !== null);
+          setIsSubscribed(check.ok && check.data.subscribed);
         }
       });
     }

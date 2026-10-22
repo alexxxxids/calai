@@ -183,5 +183,62 @@ describe('sendDueNotifications and push delivery engine', () => {
       expect(updateMock).toHaveBeenCalledWith({ notified_at: now.toISOString() });
       expect(updateInMock).toHaveBeenCalledWith('id', ['block-1']);
     });
+
+    it('does not mark blocks as notified if fetching subscriptions fails with DB error (H-3)', async () => {
+      const now = new Date('2026-10-12T10:00:00.000Z');
+      const startsAt = new Date('2026-10-12T10:10:00.000Z').toISOString();
+
+      const blocksMock = [
+        {
+          id: 'block-1',
+          user_id: 'user-1',
+          starts_at: startsAt,
+          tasks: { id: 'task-1', task_types: { name: 'Fizyka' } },
+        },
+      ];
+
+      const updateMock = vi.fn();
+
+      const adminMock = {
+        from: vi.fn((table: string) => {
+          if (table === 'blocks') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  is: vi.fn().mockReturnValue({
+                    gte: vi.fn().mockReturnValue({
+                      lt: vi.fn().mockResolvedValue({ data: blocksMock, error: null }),
+                    }),
+                  }),
+                }),
+              }),
+              update: updateMock,
+            };
+          }
+          if (table === 'profiles') {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({
+                  data: [{ id: 'user-1', timezone: 'Europe/Warsaw' }],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          if (table === 'push_subscriptions') {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB connection failure' } }),
+              }),
+            };
+          }
+          return {};
+        }),
+      } as unknown as NotificationAdmin;
+
+      const result = await sendDueNotifications(adminMock, now);
+      expect(result.upcomingSent).toBe(0);
+      expect(updateMock).not.toHaveBeenCalled();
+    });
   });
 });

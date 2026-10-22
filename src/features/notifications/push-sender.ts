@@ -50,7 +50,13 @@ export async function sendPushToSubscription(
   } catch (error: unknown) {
     if (error instanceof WebPushError) {
       if (error.statusCode === NOT_FOUND_STATUS || error.statusCode === GONE_STATUS) {
-        await admin.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
+        const { error: deleteError } = await admin
+          .from('push_subscriptions')
+          .delete()
+          .eq('endpoint', subscription.endpoint);
+        if (deleteError) {
+          console.error('[push-sender] Failed to prune dead subscription:', deleteError);
+        }
         return { success: false, pruned: true };
       }
       console.warn(`[push-sender] WebPushError ${error.statusCode} for endpoint: ${error.endpoint}`);

@@ -53,6 +53,21 @@ describe('time-window calculations', () => {
       expect(isEndOfDayWindow(instantAt2205, WARSAW_TZ, '22:00')).toBe(false);
       expect(isEndOfDayWindow(instantAt2159, WARSAW_TZ, '22:00')).toBe(false);
     });
+
+    it('correctly handles day_end near midnight wrapping into the next day (H-4)', () => {
+      // 23:58 window wraps into next day: [23:58, 00:03)
+      const instantAt2357 = zonedToInstant('2026-10-12', '23:57', WARSAW_TZ);
+      const instantAt2358 = zonedToInstant('2026-10-12', '23:58', WARSAW_TZ);
+      const instantAt0000 = zonedToInstant('2026-10-13', '00:00', WARSAW_TZ);
+      const instantAt0002 = zonedToInstant('2026-10-13', '00:02', WARSAW_TZ);
+      const instantAt0003 = zonedToInstant('2026-10-13', '00:03', WARSAW_TZ);
+
+      expect(isEndOfDayWindow(instantAt2357, WARSAW_TZ, '23:58')).toBe(false);
+      expect(isEndOfDayWindow(instantAt2358, WARSAW_TZ, '23:58')).toBe(true);
+      expect(isEndOfDayWindow(instantAt0000, WARSAW_TZ, '23:58')).toBe(true);
+      expect(isEndOfDayWindow(instantAt0002, WARSAW_TZ, '23:58')).toBe(true);
+      expect(isEndOfDayWindow(instantAt0003, WARSAW_TZ, '23:58')).toBe(false);
+    });
   });
 
   describe('isSundayReflectionWindow', () => {
