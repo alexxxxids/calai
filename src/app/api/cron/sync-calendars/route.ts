@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { syncAllSubscriptions } from '@/features/calendar-sync/sync-subscription';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const BEARER_PREFIX = 'Bearer ';
 const HTTP_UNAUTHORIZED = 401;

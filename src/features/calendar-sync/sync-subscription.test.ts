@@ -165,6 +165,23 @@ describe('sync-subscription', () => {
         'Zablokowano adres sieci prywatnej (SSRF)'
       );
     });
+
+    it('throws DNS timeout error when DNS lookup exceeds DNS_TIMEOUT_MS (H-3)', async () => {
+      vi.useFakeTimers();
+      try {
+        (dns.promises.lookup as unknown as { mockImplementation: (fn: () => Promise<unknown>) => void }).mockImplementation(
+          () => new Promise(() => {})
+        );
+
+        const promise = validateHostNotPrivate('slow-dns.example.com');
+        const assertion = expect(promise).rejects.toThrow('Przekroczono limit czasu DNS (3 s)');
+
+        await vi.advanceTimersByTimeAsync(3000);
+        await assertion;
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('fetchIcalFeed', () => {
@@ -238,6 +255,31 @@ describe('sync-subscription', () => {
         'https://example.com/redirected.ics',
         expect.anything()
       );
+    });
+
+    it('cancels response body stream when following a redirect (H-7)', async () => {
+      const cancelMock = vi.fn().mockResolvedValue(undefined);
+      const redirectBody = {
+        cancel: cancelMock,
+      } as unknown as ReadableStream;
+
+      mockFetch
+        .mockResolvedValueOnce({
+          status: 302,
+          ok: false,
+          headers: new Headers({ Location: 'https://example.com/target.ics' }),
+          body: redirectBody,
+        })
+        .mockResolvedValueOnce(
+          new Response(SAMPLE_ICS, {
+            status: 200,
+            headers: { 'Content-Type': 'text/calendar' },
+          })
+        );
+
+      const content = await fetchIcalFeed('https://example.com/initial.ics');
+      expect(content).toBe(SAMPLE_ICS);
+      expect(cancelMock).toHaveBeenCalledTimes(1);
     });
 
     it('blocks redirect to HTTP (H-2)', async () => {
@@ -393,6 +435,11 @@ describe('sync-subscription', () => {
       expect(formatSyncError(null)).toBe('Nieznany błąd synchronizacji');
       expect(formatSyncError({})).toBe('Nieznany błąd synchronizacji');
     });
+
+    it('formats DNS timeout error (H-3)', () => {
+      const err = new Error('Przekroczono limit czasu DNS (3 s)');
+      expect(formatSyncError(err)).toBe('Przekroczono limit czasu DNS (3 s)');
+    });
   });
 
   describe('syncSubscription', () => {
@@ -457,7 +504,7 @@ describe('sync-subscription', () => {
       });
     });
 
-    it('records last_error and last_synced_at in database when fetch fails', async () => {
+    it('records only last_error (without last_synced_at) in database when fetch fails (H-1)', async () => {
       mockFetch.mockResolvedValueOnce(
         new Response('Internal Server Error', {
           status: 500,
@@ -498,8 +545,10 @@ describe('sync-subscription', () => {
       expect(result.error).toBe('Błąd pobierania kalendarza (HTTP 500)');
       expect(mockUpdate).toHaveBeenCalledWith({
         last_error: 'Błąd pobierania kalendarza (HTTP 500)',
-        last_synced_at: fixedNow.toISOString(),
       });
+      expect(mockUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({ last_synced_at: expect.anything() })
+      );
     });
 
     it('records last_error when database RPC replace_external_events fails', async () => {
@@ -543,18 +592,83 @@ describe('sync-subscription', () => {
       expect(result.error).toBe('Database transaction error');
       expect(mockUpdate).toHaveBeenCalledWith({
         last_error: 'Database transaction error',
-        last_synced_at: fixedNow.toISOString(),
       });
+      expect(mockUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({ last_synced_at: expect.anything() })
+      );
+    });
+
+    it('returns formatted error and updates last_error when DNS timeout occurs during sync (H-3)', async () => {
+      vi.useFakeTimers();
+      try {
+        (dns.promises.lookup as unknown as { mockImplementation: (fn: () => Promise<unknown>) => void }).mockImplementation(
+          () => new Promise(() => {})
+        );
+
+        const mockUpdate = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+        });
+
+        const mockSupabase = {
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'sub-dns-timeout',
+                    user_id: 'user-456',
+                    name: 'Slow DNS Feed',
+                    url: 'https://slow-dns.example.com/cal.ics',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+            update: mockUpdate,
+          }),
+        } as unknown as SupabaseClient<Database>;
+
+        const promise = syncSubscription(mockSupabase, 'sub-dns-timeout', fixedNow);
+        await vi.advanceTimersByTimeAsync(3000);
+        const result = await promise;
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toBe('Przekroczono limit czasu DNS (3 s)');
+        expect(mockUpdate).toHaveBeenCalledWith({
+          last_error: 'Przekroczono limit czasu DNS (3 s)',
+        });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
   describe('syncAllSubscriptions', () => {
     const fixedNow = new Date('2026-10-25T12:00:00Z');
 
+    it('orders subscriptions by last_synced_at ascending with nullsFirst (H-5)', async () => {
+      const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null });
+      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockAdmin = {
+        from: vi.fn().mockReturnValue({ select: mockSelect }),
+      } as unknown as SupabaseClient<Database>;
+
+      await syncAllSubscriptions(mockAdmin, fixedNow);
+
+      expect(mockAdmin.from).toHaveBeenCalledWith('calendar_subscriptions');
+      expect(mockSelect).toHaveBeenCalledWith('id');
+      expect(mockOrder).toHaveBeenCalledWith('last_synced_at', {
+        ascending: true,
+        nullsFirst: true,
+      });
+    });
+
     it('returns empty summary when no subscriptions exist', async () => {
       const mockAdmin = {
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
         }),
       } as unknown as SupabaseClient<Database>;
 
@@ -588,10 +702,12 @@ describe('sync-subscription', () => {
             return {
               select: vi.fn().mockImplementation((cols: string) => {
                 if (cols === 'id') {
-                  return Promise.resolve({
-                    data: [{ id: 'sub-1' }, { id: 'sub-2' }],
-                    error: null,
-                  });
+                  return {
+                    order: vi.fn().mockResolvedValue({
+                      data: [{ id: 'sub-1' }, { id: 'sub-2' }],
+                      error: null,
+                    }),
+                  };
                 }
                 return {
                   eq: vi.fn().mockImplementation((_field: string, val: string) => {

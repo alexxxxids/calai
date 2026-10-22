@@ -1,32 +1,23 @@
 import 'server-only';
 
-import dns from 'node:dns';
-import net from 'node:net';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/types/database.types';
+import { fetchIcalFeed } from './fetch-feed';
 import { parseAndExpandIcal } from './parse-ical';
-import { isPrivateHostname, isPrivateIpAddress } from './schemas';
 
-export const MAX_FEED_SIZE_BYTES = 2_097_152;
-export const MAX_REDIRECTS = 3;
-export const FETCH_TIMEOUT_MS = 10_000;
+export {
+  MAX_FEED_SIZE_BYTES,
+  MAX_REDIRECTS,
+  FETCH_TIMEOUT_MS,
+  DNS_TIMEOUT_MS,
+  validateHostNotPrivate,
+  fetchIcalFeed,
+} from './fetch-feed';
+
 export const SYNC_PAST_DAYS = 7;
 export const SYNC_FUTURE_DAYS = 60;
 export const MS_PER_DAY = 86_400_000;
 export const MAX_ERROR_LENGTH = 200;
-
-const HTTP_MOVED_PERMANENTLY = 301;
-const HTTP_FOUND = 302;
-const HTTP_TEMPORARY_REDIRECT = 307;
-const HTTP_PERMANENT_REDIRECT = 308;
-const REDIRECT_STATUSES = [
-  HTTP_MOVED_PERMANENTLY,
-  HTTP_FOUND,
-  HTTP_TEMPORARY_REDIRECT,
-  HTTP_PERMANENT_REDIRECT,
-] as const;
-
-const RADIX_DECIMAL = 10;
 
 export interface SyncSubscriptionResult {
   readonly ok: boolean;
@@ -46,139 +37,6 @@ export interface SyncAllSummary {
   readonly succeeded: number;
   readonly failed: number;
   readonly results: readonly SyncItemSummary[];
-}
-
-export async function validateHostNotPrivate(hostname: string): Promise<void> {
-  const cleanHost = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
-  if (isPrivateHostname(cleanHost)) {
-    throw new Error('Zablokowano adres sieci prywatnej (SSRF)');
-  }
-
-  if (net.isIP(cleanHost)) {
-    if (isPrivateIpAddress(cleanHost)) {
-      throw new Error('Zablokowano adres sieci prywatnej (SSRF)');
-    }
-    return;
-  }
-
-  const records = await dns.promises.lookup(cleanHost, { all: true });
-  for (const rec of records) {
-    if (isPrivateIpAddress(rec.address)) {
-      throw new Error('Zablokowano adres sieci prywatnej (SSRF)');
-    }
-  }
-}
-
-async function cancelReaderSafe(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-): Promise<void> {
-  try {
-    await reader.cancel();
-  } catch {
-    // Ignore cancel error
-  }
-}
-
-async function readResponseBody(response: Response): Promise<string> {
-  if (!response.body) {
-    return '';
-  }
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      if (value) {
-        totalBytes += value.byteLength;
-        if (totalBytes > MAX_FEED_SIZE_BYTES) {
-          await cancelReaderSafe(reader);
-          throw new Error('Rozmiar pliku kalendarza przekracza limit 2 MB');
-        }
-        chunks.push(value);
-      }
-    }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch {
-      // Ignore release lock error on closed/cancelled stream
-    }
-  }
-
-  const combined = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder('utf-8').decode(combined);
-}
-
-async function fetchSingleAttempt(url: string): Promise<Response> {
-  const parsed = new URL(url);
-  if (parsed.protocol !== 'https:') {
-    throw new Error('Wymagany protokół HTTPS');
-  }
-
-  await validateHostNotPrivate(parsed.hostname);
-
-  return fetch(url, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    redirect: 'manual',
-    headers: {
-      Accept: 'text/calendar, text/plain, */*',
-    },
-  });
-}
-
-function resolveRedirectUrl(response: Response, currentUrl: string, count: number): string {
-  if (count > MAX_REDIRECTS) {
-    throw new Error('Zbyt wiele przekierowań');
-  }
-  const location = response.headers.get('Location');
-  if (!location) {
-    throw new Error(`Błąd pobierania kalendarza (HTTP ${response.status})`);
-  }
-  return new URL(location, currentUrl).toString();
-}
-
-function checkContentLengthHeader(response: Response): void {
-  const header = response.headers.get('content-length');
-  if (!header) {
-    return;
-  }
-  const parsed = parseInt(header, RADIX_DECIMAL);
-  if (!Number.isNaN(parsed) && parsed > MAX_FEED_SIZE_BYTES) {
-    throw new Error('Rozmiar pliku kalendarza przekracza limit 2 MB');
-  }
-}
-
-export async function fetchIcalFeed(initialUrl: string): Promise<string> {
-  let currentUrl = initialUrl;
-  let redirectCount = 0;
-
-  while (true) {
-    const response = await fetchSingleAttempt(currentUrl);
-
-    if (REDIRECT_STATUSES.includes(response.status as (typeof REDIRECT_STATUSES)[number])) {
-      redirectCount++;
-      currentUrl = resolveRedirectUrl(response, currentUrl, redirectCount);
-      continue;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Błąd pobierania kalendarza (HTTP ${response.status})`);
-    }
-
-    checkContentLengthHeader(response);
-    return await readResponseBody(response);
-  }
 }
 
 function extractErrorMessage(error: unknown): string {
@@ -215,6 +73,9 @@ function isTimeoutError(error: unknown, msg: string): boolean {
 export function formatSyncError(error: unknown): string {
   const msg = extractErrorMessage(error);
 
+  if (msg.includes('Przekroczono limit czasu DNS')) {
+    return 'Przekroczono limit czasu DNS (3 s)';
+  }
   if (isTimeoutError(error, msg)) {
     return 'Przekroczono limit czasu połączenia (10 s)';
   }
@@ -236,14 +97,12 @@ async function recordSubscriptionError(
   supabase: SupabaseClient<Database>,
   subscriptionId: string,
   formattedError: string,
-  now: Date,
 ): Promise<void> {
   try {
     await supabase
       .from('calendar_subscriptions')
       .update({
         last_error: formattedError,
-        last_synced_at: now.toISOString(),
       })
       .eq('id', subscriptionId);
   } catch {
@@ -295,7 +154,7 @@ export async function syncSubscription(
     return { ok: true, count: count ?? 0 };
   } catch (err) {
     const formattedError = formatSyncError(err);
-    await recordSubscriptionError(supabase, subscriptionId, formattedError, now);
+    await recordSubscriptionError(supabase, subscriptionId, formattedError);
     return { ok: false, error: formattedError };
   }
 }
@@ -306,7 +165,8 @@ export async function syncAllSubscriptions(
 ): Promise<SyncAllSummary> {
   const { data: subs, error } = await admin
     .from('calendar_subscriptions')
-    .select('id');
+    .select('id')
+    .order('last_synced_at', { ascending: true, nullsFirst: true });
 
   if (error || !subs) {
     return {

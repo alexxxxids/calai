@@ -22,11 +22,15 @@ vi.mock('@/features/calendar-sync/sync-subscription', () => ({
 }));
 
 import { syncAllSubscriptions } from '@/features/calendar-sync/sync-subscription';
-import { GET, POST } from './route';
+import { GET, POST, maxDuration } from './route';
 
 describe('/api/cron/sync-calendars route handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('exports maxDuration = 60 for Vercel serverless execution (H-2)', () => {
+    expect(maxDuration).toBe(60);
   });
 
   it('returns 401 when Authorization header is missing', async () => {

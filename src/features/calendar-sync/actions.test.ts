@@ -17,6 +17,11 @@ vi.mock('./sync-subscription', () => ({
   syncSubscription: (...args: unknown[]) => mockSyncSubscription(...args),
 }));
 
+const mockReplanForUser = vi.fn().mockResolvedValue({ status: 'ok', blocksCreated: 0 });
+vi.mock('@/features/planner/replan', () => ({
+  replanForUser: (...args: unknown[]) => mockReplanForUser(...args),
+}));
+
 let mockSupabaseClient: unknown;
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabaseClient)),
@@ -157,6 +162,55 @@ describe('features/calendar-sync queries & actions', () => {
         expect(result.data).toBe('new-sub-id');
       }
       expect(mockSyncSubscription).toHaveBeenCalledWith(mockSupabaseClient, 'new-sub-id', expect.any(Date));
+      expect(mockReplanForUser).toHaveBeenCalledWith(mockSupabaseClient, 'user-1', expect.any(Date));
+    });
+
+    it('does not call replanForUser when initial sync fails in addSubscription (H-4)', async () => {
+      mockGetCurrentUser.mockResolvedValueOnce({ id: 'user-1' });
+      mockSyncSubscription.mockResolvedValueOnce({ ok: false, error: 'SSRF blocked' });
+
+      mockSupabaseClient = {
+        from: vi.fn().mockReturnValue({
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { id: 'new-sub-id' }, error: null }),
+            }),
+          }),
+        }),
+      } as unknown as SupabaseClient<Database>;
+
+      const result = await addSubscription({
+        name: 'Mój kalendarz',
+        url: 'https://example.com/cal.ics',
+        typeId: '11111111-1111-4111-8111-111111111111',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(mockReplanForUser).not.toHaveBeenCalled();
+    });
+
+    it('succeeds even if replanForUser throws an error (H-4 resilience)', async () => {
+      mockGetCurrentUser.mockResolvedValueOnce({ id: 'user-1' });
+      mockSyncSubscription.mockResolvedValueOnce({ ok: true, count: 5 });
+      mockReplanForUser.mockRejectedValueOnce(new Error('Scheduler crashed'));
+
+      mockSupabaseClient = {
+        from: vi.fn().mockReturnValue({
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { id: 'new-sub-id' }, error: null }),
+            }),
+          }),
+        }),
+      } as unknown as SupabaseClient<Database>;
+
+      const result = await addSubscription({
+        name: 'Mój kalendarz',
+        url: 'https://example.com/cal.ics',
+        typeId: '11111111-1111-4111-8111-111111111111',
+      });
+
+      expect(result.ok).toBe(true);
     });
   });
 
@@ -192,6 +246,7 @@ describe('features/calendar-sync queries & actions', () => {
       });
 
       expect(result.ok).toBe(true);
+      expect(mockReplanForUser).toHaveBeenCalledWith(mockSupabaseClient, 'user-1', expect.any(Date));
     });
   });
 
@@ -209,6 +264,7 @@ describe('features/calendar-sync queries & actions', () => {
       if (result.ok) {
         expect(result.data).toBe(12);
       }
+      expect(mockReplanForUser).toHaveBeenCalledWith(mockSupabaseClient, 'user-1', expect.any(Date));
     });
 
     it('returns badRequest when sync fails', async () => {
@@ -227,6 +283,7 @@ describe('features/calendar-sync queries & actions', () => {
       if (!result.ok) {
         expect(result.error).toBe('Przekroczono limit czasu połączenia (10 s)');
       }
+      expect(mockReplanForUser).not.toHaveBeenCalled();
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   type SyncSubscriptionInput,
 } from './schemas';
 import { syncSubscription } from './sync-subscription';
+import { replanForUser } from '@/features/planner/replan';
 
 export interface RotateFeedTokenResult {
   readonly token: string;
@@ -108,7 +109,10 @@ export async function addSubscription(
       return unexpected('addSubscription', insertError);
     }
 
-    await syncSubscription(supabase, inserted.id, new Date());
+    const syncResult = await syncSubscription(supabase, inserted.id, new Date());
+    if (syncResult.ok) {
+      await replanForUser(supabase, user.id, new Date()).catch(() => {});
+    }
 
     revalidatePath('/settings');
     revalidatePath('/calendar');
@@ -147,6 +151,8 @@ export async function removeSubscription(
       return unexpected('removeSubscription', error);
     }
 
+    await replanForUser(supabase, user.id, new Date()).catch(() => {});
+
     revalidatePath('/settings');
     revalidatePath('/calendar');
 
@@ -182,6 +188,8 @@ export async function syncSubscriptionAction(
     if (!result.ok) {
       return badRequest(result.error || 'Błąd synchronizacji');
     }
+
+    await replanForUser(supabase, user.id, new Date()).catch(() => {});
 
     return ok(result.count ?? 0);
   } catch (err) {
