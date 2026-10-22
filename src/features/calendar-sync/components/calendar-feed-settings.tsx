@@ -8,7 +8,7 @@ import {
   Loader2Icon,
   RefreshCwIcon,
 } from 'lucide-react';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { useBrowserValue } from '@/components/app/use-browser-value';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -204,8 +204,10 @@ function useFeedToken(initialToken?: string | null) {
         return;
       }
       setIsLoading(false);
-      if (result.ok && result.data.token) {
+      if (result.ok) {
         setToken(result.data.token);
+      } else {
+        toast.error(result.error ?? 'Nie udało się pobrać linku kalendarza');
       }
     });
 
@@ -221,7 +223,16 @@ export function CalendarFeedSettings({ initialToken }: CalendarFeedSettingsProps
   const { token, setToken, isLoading } = useFeedToken(initialToken);
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const origin = useBrowserValue(() => window.location.origin) ?? '';
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const fullUrl = token ? (origin ? `${origin}/api/ics/${token}` : `/api/ics/${token}`) : '';
 
@@ -231,9 +242,14 @@ export function CalendarFeedSettings({ initialToken }: CalendarFeedSettingsProps
     }
     try {
       await navigator.clipboard.writeText(fullUrl);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       setCopied(true);
       toast.success('Skopiowano link do schowka');
-      setTimeout(() => setCopied(false), COPIED_TIMEOUT_MS);
+      timeoutRef.current = setTimeout(() => {
+        setCopied(false);
+      }, COPIED_TIMEOUT_MS);
     } catch {
       toast.error('Nie udało się skopiować linku');
     }

@@ -5,6 +5,7 @@ import type { ServerSupabase } from '@/lib/supabase/server';
 /**
  * Retrieves the current user's iCal feed token from the database.
  * Returns null if the user has not generated a feed token yet.
+ * Throws if a database error occurs to avoid masking errors.
  */
 export async function getCalendarFeedToken(
   supabase: ServerSupabase,
@@ -18,7 +19,7 @@ export async function getCalendarFeedToken(
 
   if (error) {
     console.error('[getCalendarFeedToken] Database error querying feed token:', error);
-    return null;
+    throw new Error(`Nie udało się pobrać tokenu kalendarza: ${error.message}`);
   }
 
   return data?.token ?? null;

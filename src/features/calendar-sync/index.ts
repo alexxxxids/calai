@@ -4,9 +4,6 @@ export type { CalendarFeedSettingsProps } from './components/calendar-feed-setti
 export { rotateFeedToken, getFeedTokenAction } from './actions';
 export type { RotateFeedTokenResult, GetFeedTokenResult } from './actions';
 
-export { buildFeed } from './build-feed';
-export { getCalendarFeedToken } from './queries';
-
 export {
   feedTokenSchema,
   isValidFeedToken,

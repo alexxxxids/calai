@@ -235,16 +235,28 @@ describe('getCalendarFeedToken', () => {
     expect(token).toBe('my-token');
   });
 
-  it('returns null when not found or on error', async () => {
+  it('returns null when not found in database', async () => {
     const mockSupabase = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       }),
     } as unknown as Parameters<typeof getCalendarFeedToken>[0];
 
     const token = await getCalendarFeedToken(mockSupabase, 'user-1');
     expect(token).toBeNull();
+  });
+
+  it('throws an error when database query fails (H-1)', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: 'Connection timeout' } }),
+      }),
+    } as unknown as Parameters<typeof getCalendarFeedToken>[0];
+
+    await expect(getCalendarFeedToken(mockSupabase, 'user-1')).rejects.toThrow('Connection timeout');
   });
 });
