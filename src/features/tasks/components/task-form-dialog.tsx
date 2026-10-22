@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { createTask, updateTask } from '../actions';
 import { calculatePacePreview } from '../pace-preview';
+import { TaskAiDecomposeTrigger } from './task-ai-decompose-trigger';
 import { TaskFormFields } from './task-form-fields';
 import {
   createDefaultFormData,
@@ -184,13 +185,25 @@ function TaskFormContent({ initialData, taskTypes, onDone }: TaskFormContentProp
         onChange={handleFieldChange}
       />
 
-      <DialogFooter className="mt-4">
-        <Button type="button" variant="outline" onClick={onDone} disabled={isPending}>
-          Anuluj
-        </Button>
-        <Button type="submit" disabled={isPending}>
-          {submitText}
-        </Button>
+      <DialogFooter className="mt-4 flex-col gap-2 sm:flex-row sm:justify-between">
+        {!initialData && (
+          <TaskAiDecomposeTrigger
+            typeId={formData.isOneOff ? null : (formData.typeId || null)}
+            taskTypes={taskTypes}
+            initialDescription={formData.notes}
+            initialDeadline={formData.deadlineDate}
+            onSuccess={onDone}
+            disabled={isPending}
+          />
+        )}
+        <div className="flex gap-2 justify-end sm:ml-auto">
+          <Button type="button" variant="outline" onClick={onDone} disabled={isPending}>
+            Anuluj
+          </Button>
+          <Button type="submit" disabled={isPending}>
+            {submitText}
+          </Button>
+        </div>
       </DialogFooter>
     </form>
   );
