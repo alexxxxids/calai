@@ -24,7 +24,7 @@ describe('TimetableImportTrigger', () => {
       }),
     );
 
-    expect(html).toContain('disabled');
+    expect(html).toContain('disabled=""');
     expect(html).toContain(TIMETABLE_TRIGGER_LABEL);
   });
 
@@ -47,6 +47,6 @@ describe('TimetableImportTrigger', () => {
       }),
     );
 
-    expect(html).toContain('disabled');
+    expect(html).toContain('disabled=""');
   });
 });

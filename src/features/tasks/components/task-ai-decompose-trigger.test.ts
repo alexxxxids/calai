@@ -28,7 +28,7 @@ describe('TaskAiDecomposeTrigger', () => {
       }),
     );
 
-    expect(html).toContain('disabled');
+    expect(html).toContain('disabled=""');
     expect(html).toContain(NO_TYPE_DISABLED_HINT);
     expect(html).toContain(TRIGGER_BUTTON_LABEL);
   });
@@ -41,7 +41,7 @@ describe('TaskAiDecomposeTrigger', () => {
       }),
     );
 
-    expect(html).toContain('disabled');
+    expect(html).toContain('disabled=""');
     expect(html).toContain(ONE_OFF_DISABLED_HINT);
   });
 
@@ -66,6 +66,6 @@ describe('TaskAiDecomposeTrigger', () => {
       }),
     );
 
-    expect(html).toContain('disabled');
+    expect(html).toContain('disabled=""');
   });
 });
