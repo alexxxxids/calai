@@ -1,9 +1,38 @@
 {
   "routes": [
     { "path": "/", "status": 200, "contains": "CalAI" },
+    { "path": "/privacy", "status": 200, "contains": "Polityka prywatności" },
     { "path": "/login", "status": 200, "contains": "Zaloguj" },
+    { "path": "/register", "status": 200, "contains": "Mam ukończone 18 lat" },
+    { "path": "/forgot-password", "status": 200, "contains": "Resetowanie hasła" },
+    { "path": "/reset-password", "status": 200, "contains": "Nowe hasło" },
+    { "path": "/verify", "status": 200, "contains": "Potwierdź e-mail" },
+    { "path": "/manifest.webmanifest", "status": 200, "contains": "CalAI" },
+
     { "path": "/calendar", "status": [307, 308], "location": "/login" },
+    { "path": "/onboarding", "status": [307, 308], "location": "/login" },
+    { "path": "/settings", "status": [307, 308], "location": "/login" },
+    { "path": "/types", "status": [307, 308], "location": "/login" },
+    { "path": "/habits", "status": [307, 308], "location": "/login" },
+    { "path": "/reflection", "status": [307, 308], "location": "/login" },
+    { "path": "/stats", "status": [307, 308], "location": "/login" },
+
     { "method": "POST", "path": "/api/ai/decompose", "status": 401, "json": true },
-    { "method": "POST", "path": "/api/ai/timetable", "status": 401, "json": true }
+    { "method": "POST", "path": "/api/ai/timetable", "status": 401, "json": true },
+    { "method": "GET", "path": "/api/calendar", "status": 401, "json": true },
+    { "method": "GET", "path": "/api/habits", "status": 401, "json": true },
+    { "method": "POST", "path": "/api/habits", "status": 401, "json": true },
+    { "method": "POST", "path": "/api/cron/notify", "status": 401, "json": true },
+    { "method": "POST", "path": "/api/cron/sync-calendars", "status": 401, "json": true },
+    { "method": "GET", "path": "/api/ics/invalid-token-test", "status": 404, "contains": "Not Found" }
+  ],
+  "screens": [
+    "/",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify",
+    "/privacy"
   ]
 }
