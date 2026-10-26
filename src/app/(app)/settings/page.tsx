@@ -1,10 +1,7 @@
 import 'server-only';
 
-import dynamic from 'next/dynamic';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { BellIcon, Loader2Icon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { AccountSettings } from '@/features/account/components/account-settings';
 import { CalendarFeedSettings } from '@/features/calendar-sync/components/calendar-feed-settings';
@@ -18,6 +15,7 @@ import { listTaskTypes } from '@/features/task-types/queries';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { resolveTabFromHash } from './anchors';
+import { DynamicPushSettings } from './push-settings-client';
 import { SettingsTabs } from './settings-tabs';
 
 export const metadata: Metadata = {
@@ -36,36 +34,6 @@ function normalizeTime(timeStr: string | null | undefined, fallback: string): st
   }
   return timeStr.slice(0, TIME_SLICE_LENGTH);
 }
-
-function PushSettingsSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BellIcon className="size-5" aria-hidden="true" />
-          Powiadomienia Push
-        </CardTitle>
-        <CardDescription>
-          Ładowanie preferencji powiadomień...
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-          <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-          Sprawdzanie stanu powiadomień...
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-const DynamicPushSettings = dynamic(
-  () => import('@/features/notifications/components/push-settings').then((mod) => mod.PushSettings),
-  {
-    ssr: false,
-    loading: () => <PushSettingsSkeleton />,
-  },
-);
 
 interface SettingsPageProps {
   readonly searchParams?: Promise<{ tab?: string | string[] }>;
