@@ -4,7 +4,7 @@
     { "path": "/privacy", "status": 200, "contains": "Polityka prywatności" },
     { "path": "/login", "status": 200, "contains": "Zaloguj" },
     { "path": "/register", "status": 200, "contains": "Mam ukończone 18 lat" },
-    { "path": "/forgot-password", "status": 200, "contains": "Resetowanie hasła" },
+    { "path": "/forgot-password", "status": 200, "contains": "Nie pamiętasz hasła?" },
     { "path": "/reset-password", "status": 200, "contains": "Nowe hasło" },
     { "path": "/verify", "status": 200, "contains": "Potwierdź e-mail" },
     { "path": "/manifest.webmanifest", "status": 200, "contains": "CalAI" },
