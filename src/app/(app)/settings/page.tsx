@@ -68,14 +68,15 @@ const DynamicPushSettings = dynamic(
 );
 
 interface SettingsPageProps {
-  readonly searchParams?: Promise<{ tab?: string }>;
+  readonly searchParams?: Promise<{ tab?: string | string[] }>;
 }
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const resolvedSearchParams = await searchParams;
-  const initialTab = resolvedSearchParams?.tab
-    ? resolveTabFromHash(resolvedSearchParams.tab)
-    : undefined;
+  const rawTab = Array.isArray(resolvedSearchParams?.tab)
+    ? resolvedSearchParams.tab[0]
+    : resolvedSearchParams?.tab;
+  const initialTab = rawTab ? resolveTabFromHash(rawTab) : undefined;
 
   const { user } = await requireUser();
   const supabase = await createClient();
@@ -121,23 +122,23 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </div>
 
       <SettingsTabs initialTab={initialTab}>
-        <TabsContent value="profile" id="panel-profile" className="outline-none">
+        <TabsContent value="profile" id="panel-profile" aria-labelledby="tab-profile" className="outline-none">
           <ProfileSettings initialData={profileData} />
         </TabsContent>
 
-        <TabsContent value="planning" id="panel-planning" className="outline-none">
+        <TabsContent value="planning" id="panel-planning" aria-labelledby="tab-planning" className="outline-none">
           <PlanningSettings initialData={planningData} />
         </TabsContent>
 
-        <TabsContent value="appearance" id="panel-appearance" className="outline-none">
+        <TabsContent value="appearance" id="panel-appearance" aria-labelledby="tab-appearance" className="outline-none">
           <AppearanceSettings />
         </TabsContent>
 
-        <TabsContent value="notifications" id="panel-notifications" className="outline-none">
+        <TabsContent value="notifications" id="panel-notifications" aria-labelledby="tab-notifications" className="outline-none">
           <DynamicPushSettings />
         </TabsContent>
 
-        <TabsContent value="calendars" id="panel-calendars" className="outline-none">
+        <TabsContent value="calendars" id="panel-calendars" aria-labelledby="tab-calendars" className="outline-none">
           <div className="space-y-6">
             <CalendarFeedSettings initialToken={feedToken} />
             <CalendarSubscriptionsSettings
@@ -147,7 +148,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
         </TabsContent>
 
-        <TabsContent value="account" id="panel-account" className="outline-none">
+        <TabsContent value="account" id="panel-account" aria-labelledby="tab-account" className="outline-none">
           <AccountSettings />
         </TabsContent>
       </SettingsTabs>

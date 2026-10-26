@@ -89,6 +89,19 @@ describe('resolveTabFromHash', () => {
     expect(resolveTabFromHash('  CALENDARS  ')).toBe('calendars');
   });
 
+  it('handles array inputs safely (e.g. repeated searchParams)', () => {
+    expect(resolveTabFromHash(['konto', 'profil'])).toBe('account');
+    expect(resolveTabFromHash(['#kalendarze'])).toBe('calendars');
+    expect(resolveTabFromHash([])).toBe('profile');
+    expect(resolveTabFromHash([123])).toBe('profile');
+  });
+
+  it('handles non-string unknown inputs safely without throwing', () => {
+    expect(resolveTabFromHash(123)).toBe('profile');
+    expect(resolveTabFromHash(true)).toBe('profile');
+    expect(resolveTabFromHash({})).toBe('profile');
+  });
+
   it('falls back to profile for unknown hashes', () => {
     expect(resolveTabFromHash('#unknown')).toBe('profile');
     expect(resolveTabFromHash('#random-tab')).toBe('profile');

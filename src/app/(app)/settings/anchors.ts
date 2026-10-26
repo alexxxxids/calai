@@ -40,8 +40,11 @@ const CANONICAL_SLUGS: Record<SettingsTab, string> = {
   account: 'konto',
 };
 
-export function resolveTabFromHash(rawHash: string | null | undefined): SettingsTab {
-  if (rawHash === null || rawHash === undefined) {
+export function resolveTabFromHash(rawHash: unknown): SettingsTab {
+  if (typeof rawHash !== 'string') {
+    if (Array.isArray(rawHash) && rawHash.length > 0 && typeof rawHash[0] === 'string') {
+      return resolveTabFromHash(rawHash[0]);
+    }
     return 'profile';
   }
 

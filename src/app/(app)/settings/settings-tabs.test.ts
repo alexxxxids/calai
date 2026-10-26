@@ -47,11 +47,17 @@ describe('SettingsTabs markup rendering', () => {
     expect(html).toContain('Konto');
 
     expect(html).toContain('id="tab-profile"');
+    expect(html).toContain('aria-controls="panel-profile"');
     expect(html).toContain('id="tab-planning"');
+    expect(html).toContain('aria-controls="panel-planning"');
     expect(html).toContain('id="tab-appearance"');
+    expect(html).toContain('aria-controls="panel-appearance"');
     expect(html).toContain('id="tab-notifications"');
+    expect(html).toContain('aria-controls="panel-notifications"');
     expect(html).toContain('id="tab-calendars"');
+    expect(html).toContain('aria-controls="panel-calendars"');
     expect(html).toContain('id="tab-account"');
+    expect(html).toContain('aria-controls="panel-account"');
 
     expect(html).toContain('id="settings-child"');
     expect(html).toContain('Zawartość zakładek');

@@ -26,19 +26,27 @@ export function SettingsTabs({ initialTab, children }: SettingsTabsProps) {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>(() => initialTab ?? 'profile');
 
   React.useEffect(() => {
-    const syncFromHash = () => {
-      if (typeof window === 'undefined') return;
+    const handleHashChange = () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
       const currentHash = window.location.hash;
       if (currentHash) {
         setActiveTab(resolveTabFromHash(currentHash));
+      } else {
+        setActiveTab(initialTab ?? 'profile');
       }
     };
-    syncFromHash();
-    window.addEventListener('hashchange', syncFromHash);
+
+    if (typeof window !== 'undefined' && window.location.hash) {
+      handleHashChange();
+    }
+
+    window.addEventListener('hashchange', handleHashChange);
     return () => {
-      window.removeEventListener('hashchange', syncFromHash);
+      window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [initialTab]);
 
   const handleTabChange = (nextValue: string) => {
     const nextTab = resolveTabFromHash(nextValue);
@@ -57,6 +65,7 @@ export function SettingsTabs({ initialTab, children }: SettingsTabsProps) {
             key={item.value}
             value={item.value}
             id={`tab-${item.value}`}
+            aria-controls={`panel-${item.value}`}
             className="h-9 py-2 px-3 text-xs sm:text-sm font-medium"
           >
             {item.label}
