@@ -1,187 +1,27 @@
 'use client';
 
 import * as React from 'react';
-
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { instantToLocalDate } from '@/domain/time';
-
 import { localCreateRecurringEvents } from '@/lib/local-store';
 import type { CreateRecurringEventsInput } from '../types';
-import { RECURRING_EVENT_TITLE_MAX_LENGTH } from '../schemas';
+import {
+  RecurringEventScheduleFields,
+  RecurringEventTitleField,
+  TypeSelectorWithManager,
+  WeekdayMultiPicker,
+  type TaskTypeOption,
+} from './recurring-events-form-fields';
 import {
   DEFAULT_END_TIME,
   DEFAULT_START_TIME,
   DEFAULT_WARSAW_TIMEZONE,
   DEFAULT_WEEKDAY,
   submitRecurringEvent,
-  WEEKDAYS,
+  WORK_WEEKDAYS,
 } from './recurring-events-helpers';
 
-export interface TaskTypeOption {
-  readonly id: string;
-  readonly name: string;
-  readonly color: string;
-}
-
-interface ScheduleFieldsProps {
-  readonly startTime: string;
-  readonly endTime: string;
-  readonly validFrom: string;
-  readonly validUntil: string;
-  readonly onStartTimeChange: (val: string) => void;
-  readonly onEndTimeChange: (val: string) => void;
-  readonly onValidFromChange: (val: string) => void;
-  readonly onValidUntilChange: (val: string) => void;
-}
-
-function RecurringEventScheduleFields({
-  startTime,
-  endTime,
-  validFrom,
-  validUntil,
-  onStartTimeChange,
-  onEndTimeChange,
-  onValidFromChange,
-  onValidUntilChange,
-}: ScheduleFieldsProps) {
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label htmlFor="rec-start-time">Początek</Label>
-          <Input
-            id="rec-start-time"
-            type="time"
-            value={startTime}
-            onChange={(e) => onStartTimeChange(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="rec-end-time">Koniec</Label>
-          <Input
-            id="rec-end-time"
-            type="time"
-            value={endTime}
-            onChange={(e) => onEndTimeChange(e.target.value)}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label htmlFor="rec-valid-from">Obowiązuje od</Label>
-          <Input
-            id="rec-valid-from"
-            type="date"
-            value={validFrom}
-            onChange={(e) => onValidFromChange(e.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="rec-valid-until">Obowiązuje do (opcjonalnie)</Label>
-          <Input
-            id="rec-valid-until"
-            type="date"
-            value={validUntil}
-            onChange={(e) => onValidUntilChange(e.target.value)}
-          />
-        </div>
-      </div>
-    </>
-  );
-}
-
-interface BasicFieldsProps {
-  readonly typeId: string;
-  readonly weekday: number;
-  readonly taskTypes: readonly TaskTypeOption[];
-  readonly onTypeChange: (val: string) => void;
-  readonly onWeekdayChange: (val: number) => void;
-}
-
-function RecurringEventBasicFields({
-  typeId,
-  weekday,
-  taskTypes,
-  onTypeChange,
-  onWeekdayChange,
-}: BasicFieldsProps) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <div className="space-y-1">
-        <Label htmlFor="rec-type">Typ zadania</Label>
-        <Select value={typeId} onValueChange={onTypeChange} disabled={taskTypes.length === 0}>
-          <SelectTrigger id="rec-type" className="w-full">
-            <SelectValue placeholder="Wybierz typ" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            {taskTypes.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-2.5 rounded-full border border-black/10 dark:border-white/10"
-                    style={{ backgroundColor: t.color }}
-                    aria-hidden="true"
-                  />
-                  <span>{t.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="rec-weekday">Dzień tygodnia</Label>
-        <Select value={String(weekday)} onValueChange={(v) => onWeekdayChange(Number(v))}>
-          <SelectTrigger id="rec-weekday" className="w-full">
-            <SelectValue placeholder="Wybierz dzień" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            {WEEKDAYS.map((d) => (
-              <SelectItem key={d.value} value={String(d.value)}>
-                {d.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  );
-}
-
-interface TitleFieldProps {
-  readonly title: string;
-  readonly onTitleChange: (val: string) => void;
-}
-
-function RecurringEventTitleField({ title, onTitleChange }: TitleFieldProps) {
-  return (
-    <div className="space-y-1">
-      <Label htmlFor="rec-title">Nazwa zajęć</Label>
-      <Input
-        id="rec-title"
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="np. Matematyka"
-        maxLength={RECURRING_EVENT_TITLE_MAX_LENGTH}
-        required
-      />
-    </div>
-  );
-}
+export type { TaskTypeOption };
 
 export interface RecurringEventFormProps {
   readonly taskTypes: readonly TaskTypeOption[];
@@ -200,18 +40,21 @@ export function RecurringEventForm({
 }: RecurringEventFormProps) {
   const [title, setTitle] = React.useState('');
   const [selectedTypeId, setSelectedTypeId] = React.useState('');
-  const [weekday, setWeekday] = React.useState(DEFAULT_WEEKDAY);
+  const [showTypeManager, setShowTypeManager] = React.useState(false);
+  const [weekdays, setWeekdays] = React.useState<readonly number[]>([DEFAULT_WEEKDAY]);
   const [startTime, setStartTime] = React.useState(DEFAULT_START_TIME);
   const [endTime, setEndTime] = React.useState(DEFAULT_END_TIME);
-  const [validFrom, setValidFrom] = React.useState(() =>
-    instantToLocalDate(Date.now(), timeZone),
-  );
+  const [validFrom, setValidFrom] = React.useState(() => instantToLocalDate(Date.now(), timeZone));
   const [validUntil, setValidUntil] = React.useState('');
   const [internalPending, startTransition] = React.useTransition();
-  const isPending =
-    controlledIsSubmitting !== undefined ? controlledIsSubmitting : internalPending;
 
-  const effectiveTypeId = selectedTypeId || (taskTypes[0]?.id ?? '');
+  const isPending = controlledIsSubmitting ?? internalPending;
+  const effectiveTypeId =
+    taskTypes.some((t) => t.id === selectedTypeId) ? selectedTypeId : (taskTypes[0]?.id ?? '');
+
+  const handleToggleDay = (day: number) => {
+    setWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,16 +62,8 @@ export function RecurringEventForm({
     startTransition(async () => {
       try {
         await submitRecurringEvent(
-          {
-            title,
-            typeId: effectiveTypeId,
-            weekday,
-            startTime,
-            endTime,
-            validFrom,
-            validUntil,
-          },
-          async (createInput) => localCreateRecurringEvents(createInput as CreateRecurringEventsInput),
+          { title, typeId: effectiveTypeId, weekdays, startTime, endTime, validFrom, validUntil },
+          async (input) => localCreateRecurringEvents(input as CreateRecurringEventsInput),
           () => {
             setTitle('');
             onCreated?.();
@@ -244,15 +79,18 @@ export function RecurringEventForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <h3 className="text-sm font-semibold">Dodaj nowe zajęcia</h3>
       <RecurringEventTitleField title={title} onTitleChange={setTitle} />
-
-      <RecurringEventBasicFields
+      <TypeSelectorWithManager
         typeId={effectiveTypeId}
-        weekday={weekday}
         taskTypes={taskTypes}
+        showManager={showTypeManager}
+        onToggleManager={() => setShowTypeManager((v) => !v)}
         onTypeChange={setSelectedTypeId}
-        onWeekdayChange={setWeekday}
       />
-
+      <WeekdayMultiPicker
+        selectedDays={weekdays}
+        onToggleDay={handleToggleDay}
+        onSelectWorkWeek={() => setWeekdays(WORK_WEEKDAYS)}
+      />
       <RecurringEventScheduleFields
         startTime={startTime}
         endTime={endTime}
@@ -263,9 +101,8 @@ export function RecurringEventForm({
         onValidFromChange={setValidFrom}
         onValidUntilChange={setValidUntil}
       />
-
       <Button type="submit" disabled={isPending || taskTypes.length === 0} className="w-full">
-        {isPending ? 'Dodawanie...' : 'Dodaj zajęcia'}
+        {isPending ? 'Dodawanie...' : `Dodaj zajęcia (${weekdays.length})`}
       </Button>
     </form>
   );

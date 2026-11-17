@@ -2,19 +2,8 @@
 
 import * as React from 'react';
 import { Draggable } from '@fullcalendar/react/interaction';
-import {
-  AlertTriangleIcon,
-  CheckCircle2Icon,
-  InboxIcon,
-  Loader2Icon,
-  PlusIcon,
-  SparklesIcon,
-  XIcon,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { InboxIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { localRunPlanner } from '@/lib/local-planner';
-import type { RunPlannerResult } from '@/features/planner/types';
 import type { BacklogTaskItem } from '../types';
 import { BacklogItem } from './backlog-item';
 import { TaskFormDialog } from './task-form-dialog';
@@ -25,63 +14,6 @@ interface BacklogPanelProps {
   readonly taskTypes?: readonly TaskTypeOption[];
   readonly timeZone?: string;
   readonly onUpdated?: () => void;
-}
-
-function PlannerReportCard({
-  report,
-  onDismiss,
-}: {
-  readonly report: RunPlannerResult;
-  readonly onDismiss: () => void;
-}) {
-  const hasUnscheduled = report.unscheduled.length > 0;
-
-  return (
-    <div
-      className={`relative rounded-lg border p-4 text-sm ${
-        hasUnscheduled
-          ? 'border-amber-300 bg-amber-50/50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'
-          : 'border-emerald-300 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
-        aria-label="Zamknij raport"
-      >
-        <XIcon className="size-4" />
-      </button>
-
-      <div className="flex items-center gap-2 font-medium">
-        {hasUnscheduled ? (
-          <AlertTriangleIcon className="size-4 text-amber-600 dark:text-amber-400" />
-        ) : (
-          <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-        )}
-        <span>Zaplanowano bloków: {report.placed}</span>
-      </div>
-
-      {hasUnscheduled ? (
-        <div className="mt-2 space-y-1">
-          <p className="text-xs font-semibold">Niektóre zadania nie zmieściły się w planie:</p>
-          <ul className="list-disc pl-5 text-xs space-y-0.5">
-            {report.unscheduled.map((item) => (
-              <li key={item.taskId}>
-                Nie zdążysz: <span className="font-medium">{item.taskTitle}</span> — brak{' '}
-                {item.missingMinutes} min (powód:{' '}
-                {item.reason === 'deadline' ? 'termin' : 'brak miejsca'})
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p className="mt-1 text-xs text-muted-foreground">
-          Wszystkie zadania zmieściły się w Twoim planie.
-        </p>
-      )}
-    </div>
-  );
 }
 
 function BacklogEmptyState() {
@@ -101,14 +33,10 @@ function BacklogEmptyState() {
 function BacklogHeader({
   count,
   taskTypes,
-  isPending,
-  onPlan,
   onUpdated,
 }: {
   readonly count: number;
   readonly taskTypes?: readonly TaskTypeOption[];
-  readonly isPending: boolean;
-  readonly onPlan: () => void;
   readonly onUpdated?: () => void;
 }) {
   return (
@@ -120,29 +48,12 @@ function BacklogHeader({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <TaskFormDialog taskTypes={taskTypes} onSuccess={onUpdated}>
-          <Button size="sm" className="gap-1.5">
-            <PlusIcon className="size-4" aria-hidden="true" />
-            <span>Nowe zadanie</span>
-          </Button>
-        </TaskFormDialog>
-
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={isPending}
-          onClick={onPlan}
-          className="gap-1.5"
-        >
-          {isPending ? (
-            <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <SparklesIcon className="size-4" aria-hidden="true" />
-          )}
-          <span>{isPending ? 'Planowanie...' : 'Zaplanuj'}</span>
+      <TaskFormDialog taskTypes={taskTypes} onSuccess={onUpdated}>
+        <Button size="sm" className="gap-1.5">
+          <PlusIcon className="size-4" aria-hidden="true" />
+          <span>Nowe zadanie</span>
         </Button>
-      </div>
+      </TaskFormDialog>
     </div>
   );
 }
@@ -154,8 +65,6 @@ export function BacklogPanel({
   onUpdated,
 }: BacklogPanelProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [isPending, startTransition] = React.useTransition();
-  const [plannerReport, setPlannerReport] = React.useState<RunPlannerResult | null>(null);
 
   React.useEffect(() => {
     if (!containerRef.current) {
@@ -177,38 +86,9 @@ export function BacklogPanel({
     };
   }, [tasks]);
 
-  const handlePlan = () => {
-    startTransition(() => {
-      const result = localRunPlanner(timeZone);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      setPlannerReport(result.data);
-      if (result.data.unscheduled.length === 0) {
-        toast.success(`Zaplanowano ${result.data.placed} bloków! Wszystko zmieściło się w planie.`);
-      } else {
-        toast.warning(
-          `Zaplanowano ${result.data.placed} bloków, nie zmieściło się: ${result.data.unscheduled.length}`,
-        );
-      }
-      onUpdated?.();
-    });
-  };
-
   return (
     <div className="space-y-4">
-      <BacklogHeader
-        count={tasks.length}
-        taskTypes={taskTypes}
-        isPending={isPending}
-        onPlan={handlePlan}
-        onUpdated={onUpdated}
-      />
-
-      {plannerReport && (
-        <PlannerReportCard report={plannerReport} onDismiss={() => setPlannerReport(null)} />
-      )}
+      <BacklogHeader count={tasks.length} taskTypes={taskTypes} onUpdated={onUpdated} />
 
       {tasks.length === 0 ? (
         <BacklogEmptyState />

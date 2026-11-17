@@ -1,13 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { toast } from 'sonner';
 import { AppShell } from '@/components/app/app-shell';
 import { CalendarPageContent } from '@/features/calendar/components/calendar-page-content';
 import {
   getCalendarSnapshot,
   getLocalStoreVersion,
-  resetLocalDemoStore,
   subscribeLocalStore,
 } from '@/lib/local-store';
 import { DEFAULT_TIMEZONE } from '@/lib/local-store-seed';
@@ -26,25 +24,17 @@ export function CalendarWorkspace() {
     getLocalStoreVersion,
     () => 0,
   );
-  const [resetCount, setResetCount] = React.useState(0);
 
   const snapshot = React.useMemo(() => {
     void storeVersion;
     return isClient ? getCalendarSnapshot() : null;
   }, [isClient, storeVersion]);
 
-  const handleResetDemo = React.useCallback(() => {
-    resetLocalDemoStore();
-    setResetCount((c) => c + 1);
-    toast.success('Przywrócono dane demonstracyjne');
-  }, []);
-
   return (
-    <AppShell onResetDemo={handleResetDemo}>
+    <AppShell>
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         {snapshot ? (
           <CalendarPageContent
-            key={`workspace-${resetCount}`}
             tasks={snapshot.tasks}
             taskTypes={snapshot.taskTypes}
             unclosedBlocks={snapshot.unclosedBlocks}

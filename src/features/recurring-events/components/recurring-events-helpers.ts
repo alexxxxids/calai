@@ -13,6 +13,7 @@ export const DEFAULT_WEEKDAY = 1;
 export const DEFAULT_WARSAW_TIMEZONE = 'Europe/Warsaw';
 
 export const TIME_DISPLAY_LENGTH = 5;
+export const TUESDAY = 2;
 export const WEDNESDAY = 3;
 export const THURSDAY = 4;
 export const FRIDAY = 5;
@@ -22,22 +23,20 @@ export const SUNDAY = 7;
 export interface WeekdayOption {
   readonly value: number;
   readonly label: string;
+  readonly shortLabel: string;
 }
 
 export const WEEKDAYS: readonly WeekdayOption[] = [
-  { value: 1, label: 'Poniedziałek' },
-  { value: 2, label: 'Wtorek' },
-  { value: WEDNESDAY, label: 'Środa' },
-  { value: THURSDAY, label: 'Czwartek' },
-  { value: FRIDAY, label: 'Piątek' },
-  { value: SATURDAY, label: 'Sobota' },
-  { value: SUNDAY, label: 'Niedziela' },
+  { value: 1, label: 'Poniedziałek', shortLabel: 'Pn' },
+  { value: TUESDAY, label: 'Wtorek', shortLabel: 'Wt' },
+  { value: WEDNESDAY, label: 'Środa', shortLabel: 'Śr' },
+  { value: THURSDAY, label: 'Czwartek', shortLabel: 'Cz' },
+  { value: FRIDAY, label: 'Piątek', shortLabel: 'Pt' },
+  { value: SATURDAY, label: 'Sobota', shortLabel: 'Sb' },
+  { value: SUNDAY, label: 'Niedziela', shortLabel: 'Nd' },
 ];
 
-export function getWeekdayLabel(weekday: number): string {
-  const match = WEEKDAYS.find((d) => d.value === weekday);
-  return match?.label ?? `Dzień ${weekday}`;
-}
+export const WORK_WEEKDAYS: readonly number[] = [1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY];
 
 export function formatTimeShort(time: string): string {
   return time.length >= TIME_DISPLAY_LENGTH ? time.slice(0, TIME_DISPLAY_LENGTH) : time;
@@ -65,7 +64,7 @@ export function groupEventsByWeekday(
 export interface RecurringEventFormValues {
   readonly title: string;
   readonly typeId: string;
-  readonly weekday: number;
+  readonly weekdays: readonly number[];
   readonly startTime: string;
   readonly endTime: string;
   readonly validFrom: string;
@@ -116,6 +115,14 @@ function validateEventValidityDates(validFrom: string, validUntil?: string): str
   return undefined;
 }
 
+function validateWeekdays(weekdays: readonly number[]): string | undefined {
+  if (weekdays.length === 0) {
+    return 'Wybierz co najmniej jeden dzień tygodnia';
+  }
+  const invalid = weekdays.some((d) => d < ISO_WEEKDAY_MIN || d > ISO_WEEKDAY_MAX);
+  return invalid ? 'Dzień tygodnia musi być między 1 a 7' : undefined;
+}
+
 export function validateRecurringEventForm(
   values: RecurringEventFormValues,
 ): FormValidationResult {
@@ -123,8 +130,9 @@ export function validateRecurringEventForm(
   if (titleTypeError) {
     return { isValid: false, error: titleTypeError };
   }
-  if (values.weekday < ISO_WEEKDAY_MIN || values.weekday > ISO_WEEKDAY_MAX) {
-    return { isValid: false, error: 'Dzień tygodnia musi być między 1 a 7' };
+  const weekdayError = validateWeekdays(values.weekdays);
+  if (weekdayError) {
+    return { isValid: false, error: weekdayError };
   }
   const timeError = validateEventTimeRange(values.startTime, values.endTime);
   if (timeError) {
@@ -137,7 +145,6 @@ export function validateRecurringEventForm(
   return { isValid: true };
 }
 
-
 export interface ActionResultLike {
   readonly ok: boolean;
   readonly error?: string;
@@ -145,12 +152,17 @@ export interface ActionResultLike {
 
 export async function executeCreateRecurringEvent(
   action: () => Promise<ActionResultLike>,
+  count: number,
   onSuccess: () => void,
 ): Promise<void> {
   try {
     const res = await action();
     if (res.ok) {
-      toast.success('Dodano zajęcia do planu lekcji');
+      const msg =
+        count > 1
+          ? `Dodano zajęcia dla ${count} dni do planu lekcji`
+          : 'Dodano zajęcia do planu lekcji';
+      toast.success(msg);
       onSuccess();
     } else {
       toast.error(res.error ?? 'Nie udało się dodać zajęć');
@@ -188,22 +200,16 @@ export async function submitRecurringEvent(
     return;
   }
 
-  await executeCreateRecurringEvent(
-    () =>
-      createAction({
-        events: [
-          {
-            title: values.title.trim(),
-            typeId: values.typeId,
-            weekday: values.weekday,
-            startTime: values.startTime,
-            endTime: values.endTime,
-            validFrom: values.validFrom,
-            validUntil: values.validUntil?.trim() ? values.validUntil : undefined,
-          },
-        ],
-      }),
-    onSuccess,
-  );
-}
+  const sortedDays = [...values.weekdays].sort((a, b) => a - b);
+  const events = sortedDays.map((weekday) => ({
+    title: values.title.trim(),
+    typeId: values.typeId,
+    weekday,
+    startTime: values.startTime,
+    endTime: values.endTime,
+    validFrom: values.validFrom,
+    validUntil: values.validUntil?.trim() ? values.validUntil : undefined,
+  }));
 
+  await executeCreateRecurringEvent(() => createAction({ events }), events.length, onSuccess);
+}

@@ -7,10 +7,11 @@ import { GraduationCapIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import type { UnclosedBlockItem } from '@/features/blocks/types';
 import { HabitChecklist } from '@/features/habits/components/habit-checklist';
 import { RecurringEventsDialog } from '@/features/recurring-events/components/recurring-events-dialog';
-import type { UnclosedBlockItem } from '@/features/blocks/types';
 import type { RecurringEventWithRelations } from '@/features/recurring-events/types';
+import { TaskTypesDialog } from '@/features/task-types/components/task-types-dialog';
 import { CloseDayBanner } from './close-day-banner';
 
 export const DAY_VIEW_NAME = 'timeGridDay';
@@ -36,12 +37,13 @@ export function countActiveTaskTypes(
   return taskTypes.filter((type) => !hiddenTypeIds.has(type.id)).length;
 }
 
-export interface CalendarMiniNavProps {
+export function CalendarMiniNav({
+  selectedDate,
+  onDateSelect,
+}: {
   readonly selectedDate: Date;
   readonly onDateSelect: (date: Date) => void;
-}
-
-export function CalendarMiniNav({ selectedDate, onDateSelect }: CalendarMiniNavProps) {
+}) {
   return (
     <div className="rounded-lg border bg-card p-1 shadow-2xs">
       <Calendar
@@ -59,11 +61,7 @@ export function CalendarMiniNav({ selectedDate, onDateSelect }: CalendarMiniNavP
   );
 }
 
-export interface CalendarLessonPlanButtonProps {
-  readonly onClick: () => void;
-}
-
-export function CalendarLessonPlanButton({ onClick }: CalendarLessonPlanButtonProps) {
+export function CalendarLessonPlanButton({ onClick }: { readonly onClick: () => void }) {
   return (
     <Button
       type="button"
@@ -78,13 +76,15 @@ export function CalendarLessonPlanButton({ onClick }: CalendarLessonPlanButtonPr
   );
 }
 
-export interface CalendarTypeItemRowProps {
+export function CalendarTypeItemRow({
+  type,
+  checked,
+  onToggle,
+}: {
   readonly type: TaskTypeSidebarItem;
   readonly checked: boolean;
   readonly onToggle?: (typeId: string) => void;
-}
-
-export function CalendarTypeItemRow({ type, checked, onToggle }: CalendarTypeItemRowProps) {
+}) {
   return (
     <div className="flex items-center gap-2.5 py-1">
       <Checkbox
@@ -108,27 +108,28 @@ export function CalendarTypeItemRow({ type, checked, onToggle }: CalendarTypeIte
   );
 }
 
-export interface CalendarTypeFilterProps {
-  readonly taskTypes: readonly TaskTypeSidebarItem[];
-  readonly hiddenTypeIds?: ReadonlySet<string>;
-  readonly onToggleTypeVisibility?: (typeId: string) => void;
-}
-
 export function CalendarTypeFilter({
   taskTypes,
   hiddenTypeIds,
   onToggleTypeVisibility,
-}: CalendarTypeFilterProps) {
+}: {
+  readonly taskTypes: readonly TaskTypeSidebarItem[];
+  readonly hiddenTypeIds?: ReadonlySet<string>;
+  readonly onToggleTypeVisibility?: (typeId: string) => void;
+}) {
   const totalCount = taskTypes.length;
   const activeCount = countActiveTaskTypes(taskTypes, hiddenTypeIds);
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <span>Filtruj zadania</span>
-        <span>
-          {activeCount}/{totalCount}
-        </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <span>Filtruj zadania</span>
+          <span>
+            {activeCount}/{totalCount}
+          </span>
+        </div>
+        <TaskTypesDialog taskTypes={taskTypes} triggerLabel="Dodaj / usuń" />
       </div>
       {totalCount === 0 ? (
         <p className="text-xs text-muted-foreground">Brak typów zadań</p>
@@ -148,16 +149,13 @@ export function CalendarTypeFilter({
   );
 }
 
-export interface CalendarHabitsSectionProps {
-  readonly selectedDayStr: string;
-}
-
-export function CalendarHabitsSection({ selectedDayStr }: CalendarHabitsSectionProps) {
+export function CalendarHabitsSection({ selectedDayStr }: { readonly selectedDayStr: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Nawyki na dzień
-      </h4>
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h4>Nawyki na dzień</h4>
+        <span className="font-normal">{selectedDayStr}</span>
+      </div>
       <HabitChecklist day={selectedDayStr} />
     </div>
   );
@@ -180,71 +178,39 @@ export interface CalendarSidebarProps {
   readonly onRecurringDialogOpenChange?: (open: boolean) => void;
 }
 
-export interface CalendarSidebarViewProps extends CalendarSidebarProps {
-  readonly isDialogOpen: boolean;
-  readonly onDialogOpenChange: (open: boolean) => void;
-}
-
-export function CalendarSidebarView({
-  taskTypes,
-  selectedDate,
-  onDateSelect,
-  currentView,
-  selectedDayStr,
-  unclosedBlocks,
-  onBlockClosed,
-  hiddenTypeIds,
-  onToggleTypeVisibility,
-  recurringEvents,
-  onRecurringEventsChanged,
-  timeZone,
-  isDialogOpen,
-  onDialogOpenChange,
-}: CalendarSidebarViewProps) {
-  return (
-    <aside aria-label="Boczny panel kalendarza" className="flex flex-col gap-6">
-      <CloseDayBanner
-        unclosedBlocks={unclosedBlocks ?? []}
-        timeZone={timeZone}
-        onBlockClosed={onBlockClosed}
-      />
-
-      <CalendarMiniNav selectedDate={selectedDate} onDateSelect={onDateSelect} />
-
-      <CalendarLessonPlanButton onClick={() => onDialogOpenChange(true)} />
-
-      <CalendarTypeFilter
-        taskTypes={taskTypes}
-        hiddenTypeIds={hiddenTypeIds}
-        onToggleTypeVisibility={onToggleTypeVisibility}
-      />
-
-      {isDayView(currentView) && (
-        <CalendarHabitsSection selectedDayStr={selectedDayStr} />
-      )}
-
-      <RecurringEventsDialog
-        open={isDialogOpen}
-        onOpenChange={onDialogOpenChange}
-        taskTypes={taskTypes}
-        events={recurringEvents}
-        onEventsChanged={onRecurringEventsChanged}
-        timeZone={timeZone}
-      />
-    </aside>
-  );
-}
-
 export function CalendarSidebar(props: CalendarSidebarProps) {
   const [internalDialogOpen, setInternalDialogOpen] = React.useState(false);
   const isDialogOpen = props.recurringDialogOpen ?? internalDialogOpen;
   const handleDialogChange = props.onRecurringDialogOpenChange ?? setInternalDialogOpen;
 
   return (
-    <CalendarSidebarView
-      {...props}
-      isDialogOpen={isDialogOpen}
-      onDialogOpenChange={handleDialogChange}
-    />
+    <aside aria-label="Boczny panel kalendarza" className="flex flex-col gap-6">
+      <CloseDayBanner
+        unclosedBlocks={props.unclosedBlocks ?? []}
+        timeZone={props.timeZone}
+        onBlockClosed={props.onBlockClosed}
+      />
+
+      <CalendarMiniNav selectedDate={props.selectedDate} onDateSelect={props.onDateSelect} />
+
+      <CalendarLessonPlanButton onClick={() => handleDialogChange(true)} />
+
+      <CalendarTypeFilter
+        taskTypes={props.taskTypes}
+        hiddenTypeIds={props.hiddenTypeIds}
+        onToggleTypeVisibility={props.onToggleTypeVisibility}
+      />
+
+      <CalendarHabitsSection selectedDayStr={props.selectedDayStr} />
+
+      <RecurringEventsDialog
+        open={isDialogOpen}
+        onOpenChange={handleDialogChange}
+        taskTypes={props.taskTypes}
+        events={props.recurringEvents}
+        onEventsChanged={props.onRecurringEventsChanged}
+        timeZone={props.timeZone}
+      />
+    </aside>
   );
 }

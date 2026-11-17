@@ -1,12 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { CalendarIcon, CheckIcon, ClockIcon, PencilIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { localCancelTask, localCompleteTask } from '@/lib/local-store-tasks';
+import { formatDate, formatMinutes } from '@/lib/format';
 import type { BacklogTaskItem } from '../types';
 import { TaskFormDialog } from './task-form-dialog';
 import {
@@ -17,7 +28,6 @@ import {
   PRIORITY_MEDIUM,
   type TaskTypeOption,
 } from './task-form-types';
-import { formatDate, formatMinutes } from '@/lib/format';
 
 interface BacklogItemProps {
   readonly task: BacklogTaskItem;
@@ -54,33 +64,19 @@ function BacklogItemBadges({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {task.priority === PRIORITY_HIGH && (
-        <Badge variant="destructive" className="text-xs">
-          Wysoki
-        </Badge>
-      )}
-      {task.priority === PRIORITY_MEDIUM && (
-        <Badge variant="secondary" className="text-xs">
-          Średni
-        </Badge>
-      )}
+      {task.priority === PRIORITY_HIGH && <Badge variant="destructive" className="text-xs">Wysoki</Badge>}
+      {task.priority === PRIORITY_MEDIUM && <Badge variant="secondary" className="text-xs">Średni</Badge>}
       {task.priority !== PRIORITY_HIGH && task.priority !== PRIORITY_MEDIUM && (
-        <Badge variant="outline" className="text-xs">
-          Niski
-        </Badge>
+        <Badge variant="outline" className="text-xs">Niski</Badge>
       )}
-
       {task.estimateMinutes !== null ? (
         <Badge variant="outline" className="gap-1 text-xs">
           <ClockIcon className="size-3" aria-hidden="true" />
           {formatMinutes(task.estimateMinutes)}
         </Badge>
       ) : (
-        <Badge variant="outline" className="text-xs text-muted-foreground">
-          Pomysł
-        </Badge>
+        <Badge variant="outline" className="text-xs text-muted-foreground">Pomysł</Badge>
       )}
-
       {task.deadline && (
         <Badge
           variant="outline"
@@ -94,56 +90,81 @@ function BacklogItemBadges({
   );
 }
 
-function BacklogItemActions({
-  task,
-  taskTypes,
+function CompleteTaskConfirm({
+  taskTitle,
   isPending,
-  onComplete,
-  onCancel,
-  onUpdated,
+  onConfirm,
 }: {
-  readonly task: BacklogTaskItem;
-  readonly taskTypes?: readonly TaskTypeOption[];
+  readonly taskTitle: string;
   readonly isPending: boolean;
-  readonly onComplete: () => void;
-  readonly onCancel: () => void;
-  readonly onUpdated?: () => void;
+  readonly onConfirm: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      <TaskFormDialog initialData={task} taskTypes={taskTypes} onSuccess={onUpdated}>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 text-muted-foreground hover:text-foreground"
-          aria-label={`Edytuj zadanie ${task.typeName}`}
+          className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+          disabled={isPending}
+          aria-label={`Ukończ zadanie ${taskTitle}`}
         >
-          <PencilIcon className="size-4" aria-hidden="true" />
+          <CheckIcon className="size-4" aria-hidden="true" />
         </Button>
-      </TaskFormDialog>
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Ukończyć zadanie?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Zadanie „{taskTitle}” zostanie oznaczone jako ukończone i usunięte ze skrzynki.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Anuluj</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Tak, ukończ</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-        disabled={isPending}
-        onClick={onComplete}
-        aria-label={`Ukończ zadanie ${task.typeName}`}
-      >
-        <CheckIcon className="size-4" aria-hidden="true" />
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-8 text-muted-foreground hover:text-destructive"
-        disabled={isPending}
-        onClick={onCancel}
-        aria-label={`Anuluj zadanie ${task.typeName}`}
-      >
-        <XIcon className="size-4" aria-hidden="true" />
-      </Button>
-    </div>
+function DeleteTaskConfirm({
+  taskTitle,
+  isPending,
+  onConfirm,
+}: {
+  readonly taskTitle: string;
+  readonly isPending: boolean;
+  readonly onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-muted-foreground hover:text-destructive"
+          disabled={isPending}
+          aria-label={`Anuluj zadanie ${taskTitle}`}
+        >
+          <XIcon className="size-4" aria-hidden="true" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Usunąć zadanie?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Zadanie „{taskTitle}” oraz jego niezamknięte bloki w kalendarzu zostaną usunięte.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Wróć</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            Tak, usuń
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -153,9 +174,7 @@ export function BacklogItem({
   timeZone = 'Europe/Warsaw',
   onUpdated,
 }: BacklogItemProps) {
-  const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
-
   const title = getTaskTitle(task.typeName, task.notes);
   const duration = getTaskDurationString(task.sessionMinutes);
 
@@ -167,7 +186,6 @@ export function BacklogItem({
         return;
       }
       toast.success('Zadanie ukończone');
-      router.refresh();
       onUpdated?.();
     });
   };
@@ -179,8 +197,7 @@ export function BacklogItem({
         toast.error(result.error);
         return;
       }
-      toast.success('Zadanie anulowane');
-      router.refresh();
+      toast.success('Zadanie usunięte');
       onUpdated?.();
     });
   };
@@ -214,14 +231,20 @@ export function BacklogItem({
         </div>
       </div>
 
-      <BacklogItemActions
-        task={task}
-        taskTypes={taskTypes}
-        isPending={isPending}
-        onComplete={handleComplete}
-        onCancel={handleCancel}
-        onUpdated={onUpdated}
-      />
+      <div className="flex items-center gap-1 shrink-0">
+        <TaskFormDialog initialData={task} taskTypes={taskTypes} onSuccess={onUpdated}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground hover:text-foreground"
+            aria-label={`Edytuj zadanie ${task.typeName}`}
+          >
+            <PencilIcon className="size-4" aria-hidden="true" />
+          </Button>
+        </TaskFormDialog>
+        <CompleteTaskConfirm taskTitle={title} isPending={isPending} onConfirm={handleComplete} />
+        <DeleteTaskConfirm taskTitle={title} isPending={isPending} onConfirm={handleCancel} />
+      </div>
     </div>
   );
 }

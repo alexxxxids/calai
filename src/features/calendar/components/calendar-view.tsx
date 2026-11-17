@@ -19,6 +19,7 @@ import '@fullcalendar/react/skeleton.css';
 import '@fullcalendar/react/themes/classic/theme.css';
 
 import { instantToLocalDate } from '@/domain/time';
+import { getLocalStoreVersion, subscribeLocalStore } from '@/lib/local-store';
 import type { CalendarEventItem } from '../types';
 import {
   executeEventDrop,
@@ -175,6 +176,30 @@ function useCalendarFilteredEvents(
   );
 }
 
+function useCalendarStoreSync(
+  calendarRef: React.RefObject<CalendarRef | null>,
+  selectedDate: Date | string | undefined,
+  refreshTrigger: number | undefined,
+) {
+  const storeVersion = React.useSyncExternalStore(
+    subscribeLocalStore,
+    getLocalStoreVersion,
+    () => 0,
+  );
+
+  React.useEffect(() => {
+    if (selectedDate && calendarRef.current) {
+      calendarRef.current.getApi().gotoDate(selectedDate);
+    }
+  }, [calendarRef, selectedDate]);
+
+  React.useEffect(() => {
+    if ((refreshTrigger !== undefined && refreshTrigger > 0) || storeVersion > 0) {
+      calendarRef.current?.getApi().refetchEvents();
+    }
+  }, [calendarRef, refreshTrigger, storeVersion]);
+}
+
 export function CalendarView({
   initialView = DEFAULT_VIEW,
   workStart = DEFAULT_WORK_START,
@@ -190,18 +215,7 @@ export function CalendarView({
   const calendarRef = React.useRef<CalendarRef | null>(null);
   const [selectedBlock, setSelectedBlock] = React.useState<CalendarEventItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    if (selectedDate && calendarRef.current) {
-      calendarRef.current.getApi().gotoDate(selectedDate);
-    }
-  }, [selectedDate]);
-
-  React.useEffect(() => {
-    if (refreshTrigger !== undefined && refreshTrigger > 0) {
-      calendarRef.current?.getApi().refetchEvents();
-    }
-  }, [refreshTrigger]);
+  useCalendarStoreSync(calendarRef, selectedDate, refreshTrigger);
 
   const { refetch, handleEventDrop, handleEventResize, handleExternalDrop, handleEventClick, handleDatesSet } =
     useCalendarInteractions({
