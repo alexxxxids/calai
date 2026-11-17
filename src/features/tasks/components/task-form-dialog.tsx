@@ -13,14 +13,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { createTask, updateTask } from '../actions';
-import { calculatePacePreview } from '../pace-preview';
-import { TaskAiDecomposeTrigger } from './task-ai-decompose-trigger';
+import { localCreateTask, localUpdateTask } from '@/lib/local-store-tasks';
 import { TaskFormFields } from './task-form-fields';
 import {
   createDefaultFormData,
-  DEFAULT_PACE,
-  MIN_ESTIMATE_MINUTES,
   type TaskFormData,
   type TaskFormErrors,
   type TaskInitialData,
@@ -34,24 +30,6 @@ interface TaskFormDialogProps {
   readonly open?: boolean;
   readonly onOpenChange?: (open: boolean) => void;
   readonly onSuccess?: () => void;
-}
-
-function resolvePace(
-  formData: TaskFormData,
-  initialData?: TaskInitialData,
-  taskTypes?: readonly TaskTypeOption[],
-): number {
-  if (formData.isOneOff) {
-    return DEFAULT_PACE;
-  }
-  if (initialData && 'typePace' in initialData && initialData.typeId === formData.typeId) {
-    return initialData.typePace;
-  }
-  const matching = taskTypes?.find((t) => t.id === formData.typeId);
-  if (matching && 'pace' in matching && typeof matching.pace === 'number') {
-    return matching.pace;
-  }
-  return DEFAULT_PACE;
 }
 
 function buildUpdateTaskPayload(formData: TaskFormData, initialId: string, timeZone: string) {
@@ -132,22 +110,17 @@ function TaskFormContent({ initialData, taskTypes, onDone }: TaskFormContentProp
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  const pace = resolvePace(formData, initialData, taskTypes);
-  const estNumber = Number(formData.estimateMinutes);
-  const pacePreview =
-    formData.fixation === 'flexible' && Number.isFinite(estNumber) && estNumber >= MIN_ESTIMATE_MINUTES
-      ? calculatePacePreview(estNumber, pace).formattedText
-      : null;
+  const pacePreview = null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    startTransition(async () => {
+    startTransition(() => {
       const payload = buildPayload(formData, initialData?.id);
       const result = payload.isUpdate
-        ? await updateTask(payload.data)
-        : await createTask(payload.data);
+        ? localUpdateTask(payload.data)
+        : localCreateTask(payload.data);
 
       if (!result.ok) {
         if (result.fieldErrors) {
@@ -185,17 +158,7 @@ function TaskFormContent({ initialData, taskTypes, onDone }: TaskFormContentProp
         onChange={handleFieldChange}
       />
 
-      <DialogFooter className="mt-4 flex-col gap-2 sm:flex-row sm:justify-between">
-        {!initialData && (
-          <TaskAiDecomposeTrigger
-            typeId={formData.isOneOff ? null : (formData.typeId || null)}
-            taskTypes={taskTypes}
-            initialDescription={formData.notes}
-            initialDeadline={formData.deadlineDate}
-            onSuccess={onDone}
-            disabled={isPending}
-          />
-        )}
+      <DialogFooter className="mt-4 flex-col gap-2 sm:flex-row sm:justify-end">
         <div className="flex gap-2 justify-end sm:ml-auto">
           <Button type="button" variant="outline" onClick={onDone} disabled={isPending}>
             Anuluj

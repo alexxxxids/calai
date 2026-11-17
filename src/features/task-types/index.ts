@@ -1,8 +1,7 @@
-export { listTaskTypes, type TaskTypeRow } from './queries';
-export { createTaskType, updateTaskType, archiveTaskType } from './actions';
-export { TaskTypeItem } from './components/task-type-item';
-export { TaskTypeDialog } from './components/task-type-dialog';
-export { ArchiveTypeDialog } from './components/archive-type-dialog';
+import type { TaskType } from '@/types/db';
+
+export type TaskTypeRow = TaskType;
+
 export {
   CreateTaskTypeSchema,
   UpdateTaskTypeSchema,

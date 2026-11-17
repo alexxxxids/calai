@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
-import { deleteRecurringEvent } from '../actions';
+import { localDeleteRecurringEvent } from '@/lib/local-store';
 import type { RecurringEventWithRelations } from '../types';
 import { RecurringEventForm, type TaskTypeOption } from './recurring-events-form';
 import {
@@ -171,7 +171,7 @@ export function RecurringEventsDialog({
     }
     setInternalDeletingId(id);
     void executeDeleteRecurringEvent(
-      () => deleteRecurringEvent({ id }),
+      async () => localDeleteRecurringEvent({ id }),
       () => {
         setInternalDeletingId(null);
         onEventsChanged?.();

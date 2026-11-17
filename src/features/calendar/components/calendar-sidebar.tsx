@@ -11,7 +11,6 @@ import { HabitChecklist } from '@/features/habits/components/habit-checklist';
 import { RecurringEventsDialog } from '@/features/recurring-events/components/recurring-events-dialog';
 import type { UnclosedBlockItem } from '@/features/blocks/types';
 import type { RecurringEventWithRelations } from '@/features/recurring-events/types';
-import { TimetableImportTrigger } from '@/features/ai/components/timetable-import-trigger';
 import { CloseDayBanner } from './close-day-banner';
 
 export const DAY_VIEW_NAME = 'timeGridDay';
@@ -231,11 +230,6 @@ export function CalendarSidebarView({
         events={recurringEvents}
         onEventsChanged={onRecurringEventsChanged}
         timeZone={timeZone}
-      />
-
-      <TimetableImportTrigger
-        taskTypes={taskTypes}
-        onSuccess={onRecurringEventsChanged}
       />
     </aside>
   );

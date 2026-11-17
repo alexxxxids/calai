@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { runPlanner } from '@/features/planner/run-planner';
+import { localRunPlanner } from '@/lib/local-planner';
 import type { RunPlannerResult } from '@/features/planner/types';
 import type { BacklogTaskItem } from '../types';
 import { BacklogItem } from './backlog-item';
@@ -178,8 +178,8 @@ export function BacklogPanel({
   }, [tasks]);
 
   const handlePlan = () => {
-    startTransition(async () => {
-      const result = await runPlanner();
+    startTransition(() => {
+      const result = localRunPlanner(timeZone);
       if (!result.ok) {
         toast.error(result.error);
         return;

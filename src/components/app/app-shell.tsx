@@ -1,48 +1,45 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { RotateCcwIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/app/logo';
-import { AppNav } from '@/components/app/app-nav';
-import { MobileNav } from '@/components/app/mobile-nav';
 import { ThemeToggle } from '@/components/app/theme-toggle';
-import { AccountMenu } from '@/features/auth/components/account-menu';
-import { TimezoneBanner } from '@/features/profile/components/timezone-banner';
 
 interface AppShellProps {
-  readonly userEmail: string | null;
-  readonly profileTimezone: string;
+  readonly onResetDemo?: () => void;
   readonly children: ReactNode;
 }
 
-export function AppShell({
-  userEmail,
-  profileTimezone,
-  children,
-}: AppShellProps) {
+export function AppShell({ onResetDemo, children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile top bar */}
-      <MobileNav userEmail={userEmail} />
-
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col border-r border-border bg-card">
-        <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
-          <Logo href="/calendar" />
-        </div>
-        <div className="flex flex-1 flex-col justify-between overflow-y-auto p-4">
-          <AppNav />
-          <div className="flex items-center justify-between border-t border-border pt-4 px-2">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b border-border bg-card">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Logo href="/" />
+            <span className="hidden sm:inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              Kalendarz · localStorage
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onResetDemo && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={onResetDemo}
+              >
+                <RotateCcwIcon className="size-3.5" aria-hidden="true" />
+                <span>Resetuj demo</span>
+              </Button>
+            )}
             <ThemeToggle />
-            <AccountMenu email={userEmail} />
           </div>
         </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        <TimezoneBanner profileTimezone={profileTimezone} />
-        <main className="flex-1">{children}</main>
-      </div>
+      </header>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

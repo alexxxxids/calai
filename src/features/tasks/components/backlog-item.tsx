@@ -6,7 +6,7 @@ import { CalendarIcon, CheckIcon, ClockIcon, PencilIcon, XIcon } from 'lucide-re
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cancelTask, completeTask } from '../actions';
+import { localCancelTask, localCompleteTask } from '@/lib/local-store-tasks';
 import type { BacklogTaskItem } from '../types';
 import { TaskFormDialog } from './task-form-dialog';
 import {
@@ -160,8 +160,8 @@ export function BacklogItem({
   const duration = getTaskDurationString(task.sessionMinutes);
 
   const handleComplete = () => {
-    startTransition(async () => {
-      const result = await completeTask({ taskId: task.id });
+    startTransition(() => {
+      const result = localCompleteTask(task.id);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -173,8 +173,8 @@ export function BacklogItem({
   };
 
   const handleCancel = () => {
-    startTransition(async () => {
-      const result = await cancelTask({ taskId: task.id });
+    startTransition(() => {
+      const result = localCancelTask(task.id);
       if (!result.ok) {
         toast.error(result.error);
         return;

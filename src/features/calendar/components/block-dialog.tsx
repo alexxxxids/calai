@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { ENERGY_LEVEL_LABELS } from '@/features/task-types/schemas';
-import { closeBlock, deleteBlock } from '@/features/blocks/actions';
+import { localCloseBlock, localDeleteBlock } from '@/lib/local-store';
 import type { CalendarEventItem } from '../types';
 import {
   calculateBlockDurationMinutes,
@@ -210,8 +210,8 @@ function BlockActionForm({
     }
     setInputError(null);
     runAction(
-      () =>
-        closeBlock({
+      async () =>
+        localCloseBlock({
           blockId: block.id,
           status: 'done',
           actualMinutes: validation.minutes,
@@ -236,12 +236,12 @@ function BlockActionForm({
         isPending={isPending}
         onMiss={() =>
           runAction(
-            () => closeBlock({ blockId: block.id, status: 'missed' }),
+            async () => localCloseBlock({ blockId: block.id, status: 'missed' }),
             'Blok został oznaczony jako pominięty',
           )
         }
         onDelete={() =>
-          runAction(() => deleteBlock({ blockId: block.id }), 'Blok został usunięty')
+          runAction(async () => localDeleteBlock({ blockId: block.id }), 'Blok został usunięty')
         }
       />
     </div>

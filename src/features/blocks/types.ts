@@ -1,7 +1,6 @@
-import type { Database } from '@/types/database.types';
+import type { BlockSource, BlockStatus } from '@/types/db';
 
-export type BlockSource = Database['public']['Enums']['block_source'];
-export type BlockStatus = Database['public']['Enums']['block_status'];
+export type { BlockSource, BlockStatus };
 
 export interface ScheduleBlockInput {
   readonly taskId: string;
@@ -25,23 +24,6 @@ export interface DeleteBlockInput {
   readonly blockId: string;
 }
 
-export interface BlockItem {
-  readonly id: string;
-  readonly userId: string;
-  readonly taskId: string | null;
-  readonly startsAt: string;
-  readonly endsAt: string;
-  readonly workMinutes: number;
-  readonly status: BlockStatus;
-  readonly source: BlockSource;
-  readonly pinned: boolean;
-  readonly actualMinutes: number | null;
-  readonly closedAt: string | null;
-  readonly notifiedAt: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
 export interface UnclosedBlockItem {
   readonly id: string;
   readonly taskId: string | null;
@@ -52,13 +34,6 @@ export interface UnclosedBlockItem {
   readonly typeColor: string;
   readonly typeEnergy: number;
   readonly notes: string | null;
-}
-
-export interface WarningLoadResult {
-  readonly hasWarning: boolean;
-  readonly warning?: string;
-  readonly totalDayPoints?: number;
-  readonly effectiveLimit?: number;
 }
 
 export interface ScheduleBlockResult {

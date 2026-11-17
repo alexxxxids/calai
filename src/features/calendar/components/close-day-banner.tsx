@@ -6,7 +6,7 @@ import { AlertCircleIcon, CheckIcon, XIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/lib/format';
-import { closeBlock } from '@/features/blocks/actions';
+import { localCloseBlock } from '@/lib/local-store';
 import type { UnclosedBlockItem } from '@/features/blocks/types';
 import type { ActionResult } from '@/lib/action-result';
 import {
@@ -28,7 +28,7 @@ export interface ExecuteCloseBlockParams {
 }
 
 export async function executeCloseDayBlock(params: ExecuteCloseBlockParams): Promise<boolean> {
-  const action = params.closeAction ?? closeBlock;
+  const action = params.closeAction ?? (async (input) => localCloseBlock(input));
   try {
     const payload =
       params.status === 'done'

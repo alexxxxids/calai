@@ -1,6 +1,11 @@
 import { expandWeekly } from '@/domain/recurrence';
 import type { WeeklyRule } from '@/domain/recurrence';
-import { postgresToTime } from '@/features/profile/schemas';
+
+const TIME_HH_MM_LENGTH = 5;
+
+function toShortTime(time: string): string {
+  return time.length >= TIME_HH_MM_LENGTH ? time.slice(0, TIME_HH_MM_LENGTH) : time;
+}
 
 import type {
   CalendarEventItem,
@@ -117,8 +122,8 @@ export function expandRecurringToCalendarEvents(
 ): CalendarEventItem[] {
   const rule: WeeklyRule = {
     weekday: item.weekday,
-    startTime: postgresToTime(item.start_time),
-    endTime: postgresToTime(item.end_time),
+    startTime: toShortTime(item.start_time),
+    endTime: toShortTime(item.end_time),
     validFrom: item.valid_from,
     validUntil: item.valid_until,
   };

@@ -1,21 +1,26 @@
 'use client';
 
 import * as React from 'react';
-import { toast } from 'sonner';
-import { Flame, Loader2 } from 'lucide-react';
+import { Flame } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { HabitForDay } from '../queries';
+import {
+  getLocalStoreVersion,
+  localListHabitsForDay,
+  localToggleHabit,
+  subscribeLocalStore,
+} from '@/lib/local-store';
+import type { HabitForDay } from '@/lib/local-store-types';
 
 interface HabitChecklistProps {
-  day: string;
+  readonly day: string;
 }
 
 function HabitChecklistItem({
   habit,
   onToggle,
 }: {
-  habit: HabitForDay;
-  onToggle: (habitId: string, currentDone: boolean) => void;
+  readonly habit: HabitForDay;
+  readonly onToggle: (habitId: string, currentDone: boolean) => void;
 }) {
   return (
     <li className="flex items-center justify-between rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent/50">
@@ -48,79 +53,28 @@ function HabitChecklistItem({
   );
 }
 
-function HabitChecklistState({
-  loading,
-  empty,
-}: {
-  loading: boolean;
-  empty: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-6 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
-  if (empty) {
+export function HabitChecklist({ day }: HabitChecklistProps) {
+  const storeVersion = React.useSyncExternalStore(
+    subscribeLocalStore,
+    getLocalStoreVersion,
+    () => 0,
+  );
+
+  const habits = React.useMemo(() => {
+    void storeVersion;
+    return localListHabitsForDay(day);
+  }, [day, storeVersion]);
+
+  const handleToggle = (habitId: string, currentDone: boolean) => {
+    localToggleHabit(habitId, day, !currentDone);
+  };
+
+  if (habits.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
         Brak zaplanowanych nawyków na ten dzień.
       </div>
     );
-  }
-  return null;
-}
-
-export function HabitChecklist({ day }: HabitChecklistProps) {
-  const [habits, setHabits] = React.useState<HabitForDay[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    let ignore = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/habits?day=${day}`);
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { habits: HabitForDay[] };
-        if (!ignore) setHabits(data.habits ?? []);
-      } catch {
-        if (!ignore) toast.error('Nie udało się załadować nawyków');
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-    void load();
-    return () => { ignore = true; };
-  }, [day]);
-
-  const handleToggle = async (habitId: string, currentDone: boolean) => {
-    const nextDone = !currentDone;
-    const prev = habits;
-    setHabits((curr) =>
-      curr.map((h) =>
-        h.id === habitId
-          ? { ...h, done: nextDone, streak: nextDone ? h.streak + 1 : Math.max(0, h.streak - 1) }
-          : h,
-      ),
-    );
-
-    try {
-      const res = await fetch('/api/habits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ habitId, day, done: nextDone }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      setHabits(prev);
-      toast.error('Nie udało się zaktualizować nawyku');
-    }
-  };
-
-  if (loading || habits.length === 0) {
-    return <HabitChecklistState loading={loading} empty={habits.length === 0} />;
   }
 
   return (

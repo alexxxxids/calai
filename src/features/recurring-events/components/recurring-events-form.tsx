@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/select';
 import { instantToLocalDate } from '@/domain/time';
 
-import { createRecurringEvents } from '../actions';
+import { localCreateRecurringEvents } from '@/lib/local-store';
+import type { CreateRecurringEventsInput } from '../types';
 import { RECURRING_EVENT_TITLE_MAX_LENGTH } from '../schemas';
 import {
   DEFAULT_END_TIME,
@@ -227,7 +228,7 @@ export function RecurringEventForm({
             validFrom,
             validUntil,
           },
-          createRecurringEvents,
+          async (createInput) => localCreateRecurringEvents(createInput as CreateRecurringEventsInput),
           () => {
             setTitle('');
             onCreated?.();
