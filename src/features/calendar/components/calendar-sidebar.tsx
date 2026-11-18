@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { UnclosedBlockItem } from '@/features/blocks/types';
-import { HabitChecklist } from '@/features/habits/components/habit-checklist';
+import { AddHabitDialog, HabitChecklist } from '@/features/habits/components/habit-checklist';
 import { RecurringEventsDialog } from '@/features/recurring-events/components/recurring-events-dialog';
 import type { RecurringEventWithRelations } from '@/features/recurring-events/types';
 import { TaskTypesDialog } from '@/features/task-types/components/task-types-dialog';
@@ -152,9 +152,12 @@ export function CalendarTypeFilter({
 export function CalendarHabitsSection({ selectedDayStr }: { readonly selectedDayStr: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <h4>Nawyki na dzień</h4>
-        <span className="font-normal">{selectedDayStr}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h4>Nawyki na dzień</h4>
+          <span className="font-normal">{selectedDayStr}</span>
+        </div>
+        <AddHabitDialog />
       </div>
       <HabitChecklist day={selectedDayStr} />
     </div>
